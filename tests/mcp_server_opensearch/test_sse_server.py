@@ -1,13 +1,9 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import sys
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from mcp.types import Tool, TextContent
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from mcp.server import Server
 
 class TestMCPServer:
     @pytest.fixture

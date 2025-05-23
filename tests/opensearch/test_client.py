@@ -36,7 +36,7 @@ class TestOpenSearchClient:
     def test_initialize_client_basic_auth(self, mock_opensearch):
         """Test client initialization with basic authentication"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-domain.us-west-2.es.amazonaws.com'
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['OPENSEARCH_USERNAME'] = 'test-user'
         os.environ['OPENSEARCH_PASSWORD'] = 'test-password'
 
@@ -50,7 +50,7 @@ class TestOpenSearchClient:
         # Assert
         assert client == mock_client
         mock_opensearch.assert_called_once_with(
-            hosts=['https://test-domain.us-west-2.es.amazonaws.com'],
+            hosts=['https://test-opensearch-domain.com'],
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
@@ -62,7 +62,7 @@ class TestOpenSearchClient:
     def test_initialize_client_aws_auth(self, mock_session, mock_opensearch):
         """Test client initialization with AWS IAM authentication"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-domain.us-west-2.es.amazonaws.com'
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['AWS_REGION'] = 'us-west-2'
 
         # Mock AWS credentials
@@ -86,7 +86,7 @@ class TestOpenSearchClient:
         assert client == mock_client
         mock_opensearch.assert_called_once()
         call_kwargs = mock_opensearch.call_args[1]
-        assert call_kwargs['hosts'] == ['https://test-domain.us-west-2.es.amazonaws.com']
+        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com']
         assert call_kwargs['use_ssl'] is True
         assert call_kwargs['verify_certs'] is True
         assert call_kwargs['connection_class'] == RequestsHttpConnection
@@ -97,7 +97,7 @@ class TestOpenSearchClient:
     def test_initialize_client_aws_auth_error(self, mock_session, mock_opensearch):
         """Test client initialization when AWS authentication fails"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-domain.us-west-2.es.amazonaws.com'
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['AWS_REGION'] = 'us-west-2'
 
         # Mock AWS session to raise an error
@@ -115,7 +115,7 @@ class TestOpenSearchClient:
     def test_initialize_client_no_auth(self, mock_session, mock_opensearch):
         """Test client initialization when no authentication is available"""
         # Set only the URL environment variable
-        os.environ['OPENSEARCH_URL'] = 'https://test-domain.us-west-2.es.amazonaws.com'
+        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
 
         # Mock AWS session to return no credentials
         mock_session_instance = Mock()

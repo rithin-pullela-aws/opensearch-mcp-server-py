@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from pydantic import BaseModel
-from mcp.types import TextContent
 from opensearch.helper import list_indices, get_index_mapping, search_index, get_shards
 from typing import Any
 import json

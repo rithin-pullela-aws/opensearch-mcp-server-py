@@ -1,10 +1,6 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import logging
-from enum import Enum
-
-from pydantic import BaseModel
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -12,7 +8,6 @@ from tools.tools import TOOL_REGISTRY
 
 # --- Server setup ---
 async def serve() -> None:
-    logger = logging.getLogger(__name__)
     server = Server("opensearch-mcp-server")
 
     @server.list_tools()
