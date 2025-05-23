@@ -8,6 +8,7 @@ import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
+from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp.types import TextContent, Tool
@@ -54,10 +55,14 @@ class MCPStarletteApp:
                 self.mcp_server.create_initialization_options(),
             )
 
+    async def handle_health(self, request: Request) -> Response:
+        return Response("OK", status_code=200)
+
     def create_app(self) -> Starlette:
         return Starlette(
             routes=[
                 Route("/sse", endpoint=self.handle_sse, methods=["GET"]),
+                Route("/health", endpoint=self.handle_health, methods=["GET"]),
                 Mount("/messages/", app=self.sse.handle_post_message),
             ]
         )

@@ -218,7 +218,7 @@ class TestTools():
 
     def test_tool_registry(self):
         """Test TOOL_REGISTRY structure"""
-        expected_tools = ["list_indices", "get_index_mapping", "search_index", "get_shards"]
+        expected_tools = ["ListIndexTool", "IndexMappingTool", "SearchIndexTool", "GetShardsTool"]
         
         for tool in expected_tools:
             assert tool in self.TOOL_REGISTRY

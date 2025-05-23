@@ -1,23 +1,12 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import json
 import pytest
-import sys
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
 class TestOpenSearchHelper:
-    def setup_method(self, method):
+    def setup_method(self):
         """Setup that runs before each test method"""
-        # Create mock client
-        self.mock_client = Mock()
-        
-        # Mock the client module first
-        mock_client_module = Mock()
-        mock_client_module.client = self.mock_client
-        sys.modules['opensearch.client'] = mock_client_module
-
-        # Import after mocking
         from opensearch.helper import (
             list_indices,
             get_index_mapping,
@@ -31,25 +20,22 @@ class TestOpenSearchHelper:
         self.search_index = search_index
         self.get_shards = get_shards
 
-    def teardown_method(self, method):
-        """Cleanup after each test method"""
-        sys.modules.pop('opensearch.client', None)
-
-    def test_list_indices(self):
+    @patch('opensearch.helper.client')
+    def test_list_indices(self, mock_client):
         """Test list_indices function"""
         # Setup mock response
         mock_response = [
             {"index": "index1", "health": "green", "status": "open"},
             {"index": "index2", "health": "yellow", "status": "open"}
         ]
-        self.mock_client.cat.indices.return_value = mock_response
+        mock_client.cat.indices.return_value = mock_response
 
         # Execute
         result = self.list_indices()
 
         # Assert
         assert result == mock_response
-        self.mock_client.cat.indices.assert_called_once_with(format="json")
+        mock_client.cat.indices.assert_called_once_with(format="json")
 
     @patch('opensearch.helper.client')
     def test_get_index_mapping(self, mock_client):

@@ -9,87 +9,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from mcp.server import Server
 
-class TestAPIKeyMiddleware:
-    def setup_method(self, method):
-        """Setup that runs before each test method"""
-        # Mock the OpenSearch client
-        self.mock_client = Mock()
-        mock_client_module = Mock()
-        mock_client_module.client = self.mock_client
-        sys.modules['opensearch.client'] = mock_client_module
-        
-        # Mock the helper module
-        mock_helper = Mock()
-        sys.modules['opensearch.helper'] = mock_helper
-        
-        # Now import the module under test
-        from mcp_server_opensearch.sse_server import APIKeyMiddleware
-        self.APIKeyMiddleware = APIKeyMiddleware
-
-    def teardown_method(self, method):
-        """Cleanup after each test method"""
-        sys.modules.pop('opensearch.client', None)
-        sys.modules.pop('opensearch.helper', None)
-
-    @pytest.fixture
-    def middleware(self):
-        """Provides an APIKeyMiddleware instance for testing"""
-        return self.APIKeyMiddleware(app=None)
-
-    @pytest.mark.asyncio
-    async def test_valid_api_key(self, middleware):
-        """Test that middleware allows requests with valid API key"""
-        # Create mock request with valid API key
-        mock_request = Mock(spec=Request)
-        mock_request.headers = {"authorization": "Bearer secret-token"}
-        
-        # Create mock handler
-        mock_handler = AsyncMock()
-        mock_handler.return_value = JSONResponse({"status": "ok"})
-        
-        # Call middleware
-        response = await middleware.dispatch(mock_request, mock_handler)
-        
-        # Verify handler was called
-        mock_handler.assert_called_once_with(mock_request)
-        assert response.status_code == 200
-
-    @pytest.mark.asyncio
-    async def test_invalid_api_key(self, middleware):
-        """Test that middleware blocks requests with invalid API key"""
-        # Create mock request with invalid API key
-        mock_request = Mock(spec=Request)
-        mock_request.headers = {"authorization": "Bearer wrong-token"}
-        
-        # Create mock handler (should not be called)
-        mock_handler = AsyncMock()
-        
-        # Call middleware
-        response = await middleware.dispatch(mock_request, mock_handler)
-        
-        # Verify unauthorized response
-        assert response.status_code == 401
-        assert response.body == b'{"detail":"Unauthorized"}'
-        mock_handler.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_missing_api_key(self, middleware):
-        """Test that middleware blocks requests with missing API key"""
-        # Create mock request with no API key
-        mock_request = Mock(spec=Request)
-        mock_request.headers = {}
-        
-        # Create mock handler (should not be called)
-        mock_handler = AsyncMock()
-        
-        # Call middleware
-        response = await middleware.dispatch(mock_request, mock_handler)
-        
-        # Verify unauthorized response
-        assert response.status_code == 401
-        assert response.body == b'{"detail":"Unauthorized"}'
-        mock_handler.assert_not_called()
-
 class TestMCPServer:
     @pytest.fixture
     def mock_tool_registry(self):
@@ -140,7 +59,6 @@ class TestMCPServer:
         assert tools[0].description == "Test tool"
         assert tools[0].inputSchema == {"type": "object"}
 
-
     @pytest.mark.asyncio
     @patch('mcp_server_opensearch.sse_server.TOOL_REGISTRY')
     async def test_call_tool(self, mock_registry, mock_tool_registry):
@@ -171,15 +89,12 @@ class TestMCPStarletteApp:
     def test_create_app(self, app_handler):
         """Test Starlette application creation and configuration"""
         app = app_handler.create_app()
-        assert len(app.routes) == 2
+        assert len(app.routes) == 3
 
         # Check routes
         assert app.routes[0].path == "/sse"
-        assert app.routes[1].path == "/messages"
-
-        # Check middleware list
-        middleware_list = app.user_middleware
-        assert len(middleware_list) == 1
+        assert app.routes[1].path == "/health"
+        assert app.routes[2].path == "/messages"
 
     @pytest.mark.asyncio
     async def test_handle_sse(self, app_handler):
