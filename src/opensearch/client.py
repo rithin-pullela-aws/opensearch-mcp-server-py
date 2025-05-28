@@ -58,14 +58,14 @@ def initialize_client() -> OpenSearch:
 
     # 2. Try to get credentials (boto3 session)
     try:
-        credentials = boto3.Session().get_credentials()
+        credentials=boto3.Session().get_credentials()
         if credentials:
-            aws_auth = AWS4Auth(
-                refreshable_credentials = credentials,
-                service = OPENSEARCH_SERVICE,
-                region = aws_region,
+            aws_auth=AWS4Auth(
+                refreshable_credentials=credentials,
+                service=OPENSEARCH_SERVICE,
+                region=aws_region,
             )
-            client_kwargs['http_auth'] = aws_auth
+            client_kwargs['http_auth']=aws_auth
             return OpenSearch(**client_kwargs)
     except (boto3.exceptions.Boto3Error, Exception) as e:
         logger.error(f"Failed to get AWS credentials: {str(e)}")
