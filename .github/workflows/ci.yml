@@ -19,9 +19,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
         run: |
@@ -48,9 +46,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
         run: |
@@ -77,17 +73,17 @@ jobs:
           python-version: '3.10'
 
       - name: Install UV
-        run: |
-          curl -LsSf https://astral.sh/uv/install.ps1 | powershell
-          echo "$env:USERPROFILE\.cargo\bin" >> $env:GITHUB_PATH
+        uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
+        shell: pwsh
         run: |
           uv venv
-          .\.venv\Scripts\activate
+          .\.venv\Scripts\Activate.ps1
           uv sync
 
       - name: Run tests
+        shell: pwsh
         run: |
-          .\.venv\Scripts\activate
+          .\.venv\Scripts\Activate.ps1
           python -m pytest
