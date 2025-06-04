@@ -66,7 +66,7 @@ uv sync
                 "mcp_server_opensearch"
             ],
             "env": {
-                // Required
+                // Optional
                 "OPENSEARCH_URL": "<your_opensearch_domain_url>",
 
                 // For Basic Authentication

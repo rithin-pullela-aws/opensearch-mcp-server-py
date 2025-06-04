@@ -24,7 +24,7 @@ For Claude Desktop, configure `claude_desktop_config.json` from Settings > Devel
         "opensearch-mcp-server-py"
       ],
       "env": {
-        // Required
+        // Optional
         "OPENSEARCH_URL": "<your_opensearch_domain_url>",
 
         // For Basic Authentication
@@ -43,6 +43,7 @@ For Claude Desktop, configure `claude_desktop_config.json` from Settings > Devel
 ```
 
 That's it! You are now ready to use your AI agent with OpenSearch tools.
+Please note that if the `OPENSEARCH_URL` is not set via the environment variables, it must be provided as an argument during tool invocation.
 
 ## Installation
 
@@ -64,7 +65,7 @@ pip install opensearch-mcp-server-py
                 "mcp_server_opensearch"
             ],
             "env": {
-                // Required
+                // Optional
                 "OPENSEARCH_URL": "<your_opensearch_domain_url>",
 
                 // For Basic Authentication
