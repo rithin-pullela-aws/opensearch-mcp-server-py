@@ -5,23 +5,27 @@ from pydantic import BaseModel
 from opensearch.helper import list_indices, get_index_mapping, search_index, get_shards
 from typing import Any
 import json
+import os
 
 class ListIndicesArgs(BaseModel):
-    pass  # no args needed
+    opensearch_url: str = os.getenv("OPENSEARCH_URL", "")
 
 class GetIndexMappingArgs(BaseModel):
     index: str
+    opensearch_url: str = os.getenv("OPENSEARCH_URL", "")
 
 class SearchIndexArgs(BaseModel):
     index: str
     query: Any
+    opensearch_url: str = os.getenv("OPENSEARCH_URL", "")
 
 class GetShardsArgs(BaseModel):
     index: str
+    opensearch_url: str = os.getenv("OPENSEARCH_URL", "")
 
 async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
     try:
-        indices = list_indices()
+        indices = list_indices(args.opensearch_url)
         indices_text = "\n".join(index['index'] for index in indices)
         
         # Return in MCP expected format
@@ -37,7 +41,7 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
 
 async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
     try:
-        mapping = get_index_mapping(args.index)
+        mapping = get_index_mapping(args.opensearch_url, args.index)
         formatted_mapping = json.dumps(mapping, indent=2)
         
         return [{
@@ -52,7 +56,7 @@ async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
 
 async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
     try:
-        result = search_index(args.index, args.query)
+        result = search_index(args.opensearch_url, args.index, args.query)
         formatted_result = json.dumps(result, indent=2)
         
         return [{
@@ -67,7 +71,7 @@ async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
 
 async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
     try:
-        result = get_shards(args.index)
+        result = get_shards(args.opensearch_url, args.index)
         
         if isinstance(result, dict) and "error" in result:
             return [{

@@ -15,7 +15,7 @@ class TestOpenSearchClient:
         """Setup that runs before each test method"""
         # Clear any existing environment variables
         self.original_env = {}
-        for key in ['OPENSEARCH_URL', 'OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD', 'AWS_REGION']:
+        for key in ['OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD', 'AWS_REGION']:
             if key in os.environ:
                 self.original_env[key] = os.environ[key]
                 del os.environ[key]
@@ -26,17 +26,16 @@ class TestOpenSearchClient:
         for key, value in self.original_env.items():
             os.environ[key] = value
 
-    def test_initialize_client_missing_url(self):
-        """Test that initialize_client raises ValueError when OPENSEARCH_URL is not set"""
+    def test_initialize_client_empty_url(self):
+        """Test that initialize_client raises ValueError when opensearch_url is empty"""
         with pytest.raises(ValueError) as exc_info:
-            initialize_client()
-        assert str(exc_info.value) == "OPENSEARCH_URL environment variable is not set"
+            initialize_client("")
+        assert str(exc_info.value) == "OpenSearch URL cannot be empty"
 
     @patch('opensearch.client.OpenSearch')
     def test_initialize_client_basic_auth(self, mock_opensearch):
         """Test client initialization with basic authentication"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['OPENSEARCH_USERNAME'] = 'test-user'
         os.environ['OPENSEARCH_PASSWORD'] = 'test-password'
 
@@ -45,7 +44,7 @@ class TestOpenSearchClient:
         mock_opensearch.return_value = mock_client
 
         # Execute
-        client = initialize_client()
+        client = initialize_client('https://test-opensearch-domain.com')
 
         # Assert
         assert client == mock_client
@@ -62,7 +61,6 @@ class TestOpenSearchClient:
     def test_initialize_client_aws_auth(self, mock_session, mock_opensearch):
         """Test client initialization with AWS IAM authentication"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['AWS_REGION'] = 'us-west-2'
 
         # Mock AWS credentials
@@ -80,7 +78,7 @@ class TestOpenSearchClient:
         mock_opensearch.return_value = mock_client
 
         # Execute
-        client = initialize_client()
+        client = initialize_client('https://test-opensearch-domain.com')
 
         # Assert
         assert client == mock_client
@@ -97,7 +95,6 @@ class TestOpenSearchClient:
     def test_initialize_client_aws_auth_error(self, mock_session, mock_opensearch):
         """Test client initialization when AWS authentication fails"""
         # Set environment variables
-        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
         os.environ['AWS_REGION'] = 'us-west-2'
 
         # Mock AWS session to raise an error
@@ -107,16 +104,13 @@ class TestOpenSearchClient:
 
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
-            initialize_client()
+            initialize_client('https://test-opensearch-domain.com')
         assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"
 
     @patch('opensearch.client.OpenSearch')
     @patch('opensearch.client.boto3.Session')
     def test_initialize_client_no_auth(self, mock_session, mock_opensearch):
         """Test client initialization when no authentication is available"""
-        # Set only the URL environment variable
-        os.environ['OPENSEARCH_URL'] = 'https://test-opensearch-domain.com'
-
         # Mock AWS session to return no credentials
         mock_session_instance = Mock()
         mock_session_instance.get_credentials.return_value = None
@@ -124,5 +118,5 @@ class TestOpenSearchClient:
 
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
-            initialize_client()
+            initialize_client('https://test-opensearch-domain.com')
         assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"

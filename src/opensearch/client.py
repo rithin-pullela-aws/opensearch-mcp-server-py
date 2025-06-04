@@ -17,28 +17,30 @@ logger = logging.getLogger(__name__)
 OPENSEARCH_SERVICE = "es"
 
 # This file should expose the OpenSearch py client
-def initialize_client() -> OpenSearch:
+def initialize_client(opensearch_url: str) -> OpenSearch:
     """
     Initialize and return an OpenSearch client with appropriate authentication.
     
     The function attempts to authenticate in the following order:
     1. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
     2. AWS IAM authentication using boto3 credentials
+
+    Args:
+        opensearch_url (str): The URL of the OpenSearch cluster. Must be a non-empty string.
     
     Returns:
-        OpenSearch: Configured OpenSearch client
-        
+        OpenSearch: An initialized OpenSearch client instance.
+    
     Raises:
-        ValueError: If OPENSEARCH_URL is not set
+        ValueError: If opensearch_url is empty or invalid
         RuntimeError: If no valid authentication method is available
     """
-    opensearch_url = os.getenv("OPENSEARCH_URL", "")
+    if not opensearch_url:
+        raise ValueError("OpenSearch URL cannot be empty")
+
     opensearch_username = os.getenv("OPENSEARCH_USERNAME", "")
     opensearch_password = os.getenv("OPENSEARCH_PASSWORD", "")
     aws_region = os.getenv("AWS_REGION", "")
-
-    if not opensearch_url:
-        raise ValueError("OPENSEARCH_URL environment variable is not set")
 
     # Parse the OpenSearch domain URL
     parsed_url = urlparse(opensearch_url)
@@ -71,6 +73,3 @@ def initialize_client() -> OpenSearch:
         logger.error(f"Failed to get AWS credentials: {str(e)}")
 
     raise RuntimeError("No valid AWS or basic authentication provided for OpenSearch")
-
-
-client = initialize_client()

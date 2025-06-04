@@ -20,25 +20,27 @@ class TestOpenSearchHelper:
         self.search_index = search_index
         self.get_shards = get_shards
 
-    @patch('opensearch.helper.client')
-    def test_list_indices(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_list_indices(self, mock_initialize_client):
         """Test list_indices function"""
         # Setup mock response
         mock_response = [
             {"index": "index1", "health": "green", "status": "open"},
             {"index": "index2", "health": "yellow", "status": "open"}
         ]
+        mock_client = mock_initialize_client.return_value
         mock_client.cat.indices.return_value = mock_response
 
         # Execute
-        result = self.list_indices()
+        result = self.list_indices('https://test-opensearch-domain.com')
 
         # Assert
         assert result == mock_response
+        mock_initialize_client.assert_called_once_with('https://test-opensearch-domain.com')
         mock_client.cat.indices.assert_called_once_with(format="json")
 
-    @patch('opensearch.helper.client')
-    def test_get_index_mapping(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_get_index_mapping(self, mock_initialize_client):
         """Test get_index_mapping function"""
         # Setup mock response
         mock_response = {
@@ -51,17 +53,19 @@ class TestOpenSearchHelper:
                 }
             }
         }
+        mock_client = mock_initialize_client.return_value
         mock_client.indices.get_mapping.return_value = mock_response
 
         # Execute
-        result = self.get_index_mapping("test-index")
+        result = self.get_index_mapping('https://test-opensearch-domain.com', "test-index")
 
         # Assert
         assert result == mock_response
+        mock_initialize_client.assert_called_once_with('https://test-opensearch-domain.com')
         mock_client.indices.get_mapping.assert_called_once_with(index="test-index")
 
-    @patch('opensearch.helper.client')
-    def test_search_index(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_search_index(self, mock_initialize_client):
         """Test search_index function"""
         # Setup mock response
         mock_response = {
@@ -76,23 +80,25 @@ class TestOpenSearchHelper:
                 ]
             }
         }
+        mock_client = mock_initialize_client.return_value
         mock_client.search.return_value = mock_response
 
         # Setup test query
         test_query = {"query": {"match_all": {}}}
 
         # Execute
-        result = self.search_index("test-index", test_query)
+        result = self.search_index('https://test-opensearch-domain.com', "test-index", test_query)
 
         # Assert
         assert result == mock_response
+        mock_initialize_client.assert_called_once_with('https://test-opensearch-domain.com')
         mock_client.search.assert_called_once_with(
             index="test-index",
             body=test_query
         )
 
-    @patch('opensearch.helper.client')
-    def test_get_shards(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_get_shards(self, mock_initialize_client):
         """Test get_shards function"""
         # Setup mock response
         mock_response = [
@@ -107,58 +113,64 @@ class TestOpenSearchHelper:
                 "node": "node1"
             }
         ]
+        mock_client = mock_initialize_client.return_value
         mock_client.cat.shards.return_value = mock_response
 
         # Execute
-        result = self.get_shards("test-index")
+        result = self.get_shards('https://test-opensearch-domain.com', "test-index")
 
         # Assert
         assert result == mock_response
+        mock_initialize_client.assert_called_once_with('https://test-opensearch-domain.com')
         mock_client.cat.shards.assert_called_once_with(
             index="test-index",
             format="json"
         )
 
-    @patch('opensearch.helper.client')
-    def test_list_indices_error(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_list_indices_error(self, mock_initialize_client):
         """Test list_indices error handling"""
         # Setup mock to raise exception
+        mock_client = mock_initialize_client.return_value
         mock_client.cat.indices.side_effect = Exception("Connection error")
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.list_indices()
+            self.list_indices('https://test-opensearch-domain.com')
         assert str(exc_info.value) == "Connection error"
 
-    @patch('opensearch.helper.client')
-    def test_get_index_mapping_error(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_get_index_mapping_error(self, mock_initialize_client):
         """Test get_index_mapping error handling"""
         # Setup mock to raise exception
+        mock_client = mock_initialize_client.return_value
         mock_client.indices.get_mapping.side_effect = Exception("Index not found")
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.get_index_mapping("non-existent-index")
+            self.get_index_mapping('https://test-opensearch-domain.com', "non-existent-index")
         assert str(exc_info.value) == "Index not found"
 
-    @patch('opensearch.helper.client')
-    def test_search_index_error(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_search_index_error(self, mock_initialize_client):
         """Test search_index error handling"""
         # Setup mock to raise exception
+        mock_client = mock_initialize_client.return_value
         mock_client.search.side_effect = Exception("Invalid query")
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.search_index("test-index", {"invalid": "query"})
+            self.search_index('https://test-opensearch-domain.com', "test-index", {"invalid": "query"})
         assert str(exc_info.value) == "Invalid query"
 
-    @patch('opensearch.helper.client')
-    def test_get_shards_error(self, mock_client):
+    @patch('opensearch.helper.initialize_client')
+    def test_get_shards_error(self, mock_initialize_client):
         """Test get_shards error handling"""
         # Setup mock to raise exception
+        mock_client = mock_initialize_client.return_value
         mock_client.cat.shards.side_effect = Exception("Shard not found")
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.get_shards("non-existent-index")
+            self.get_shards('https://test-opensearch-domain.com', "non-existent-index")
         assert str(exc_info.value) == "Shard not found"
