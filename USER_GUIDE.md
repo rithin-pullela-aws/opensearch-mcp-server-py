@@ -62,9 +62,7 @@ pip install opensearch-mcp-server-py
             "command": "python",  // Or full path to python with PyPI package installed
             "args": [
                 "-m",
-                "mcp_server_opensearch",
-                "--transport",
-                "streaming"
+                "mcp_server_opensearch"
             ],
             "env": {
                 // Optional

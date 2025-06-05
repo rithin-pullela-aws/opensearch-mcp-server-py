@@ -63,9 +63,7 @@ uv sync
                 "--",
                 "python",
                 "-m",
-                "mcp_server_opensearch",
-                "--transport",
-                "streaming"
+                "mcp_server_opensearch"
             ],
             "env": {
                 // Optional

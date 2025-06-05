@@ -7,7 +7,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Added
 - Add OpenSearch URl as an optional parameter for tool calls ([20](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/20))
 - Add CI to run unit tests ([22](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/22))
-- Support HTTP Streaming Protocol([23](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/23))
+- Support Streamable HTTP Protocol([23](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/23))
 ### Removed
 
 ### Fixed
