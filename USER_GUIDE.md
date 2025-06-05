@@ -62,7 +62,9 @@ pip install opensearch-mcp-server-py
             "command": "python",  // Or full path to python with PyPI package installed
             "args": [
                 "-m",
-                "mcp_server_opensearch"
+                "mcp_server_opensearch",
+                "--transport",
+                "streaming"
             ],
             "env": {
                 // Optional
@@ -109,12 +111,12 @@ export AWS_SESSION_TOKEN="<your_aws_session_token>"
 # Stdio Server
 python -m mcp_server_opensearch
 
-# SSE Server
-python -m mcp_server_opensearch --transport sse
+# Streaming Server (SSE/HTTP streaming)
+python -m mcp_server_opensearch --transport streaming
 ```
 
 ## LangChain Integration
-The OpenSearch MCP server can be easily integrated with LangChain using the SSE server transport
+The OpenSearch MCP server can be easily integrated with LangChain using the streaming server transport (SSE/HTTP streaming).
 
 ### Prerequisites
 1. Install required packages
@@ -125,9 +127,9 @@ pip install langchain langchain-mcp-adapters langchain-openai
 ```
 export OPENAI_API_KEY="<your-openai-key>"
 ```
-3. Ensure OpenSearch MCP server is running in SSE mode
+3. Ensure OpenSearch MCP server is running in streaming mode
 ```
-python -m mcp_server_opensearch --transport sse
+python -m mcp_server_opensearch --transport streaming
 ```
 
 ### Example Integration Script
@@ -144,8 +146,8 @@ async def main():
     # Connect to MCP server and create agent
     async with MultiServerMCPClient({
         "opensearch-mcp-server": {
-            "transport": "sse",
-            "url": "http://localhost:9900/sse",  # SSE server endpoint
+            "transport": "streaming",
+            "url": "http://localhost:9900/sse",  # Streaming server endpoint (SSE-compatible)
             "headers": {
                 "Authorization": "Bearer secret-token",
             }
@@ -169,3 +171,7 @@ if __name__ == "__main__":
 - The script is compatible with any LLM that integrates with LangChain and supports tool calling
 - Make sure the OpenSearch MCP server is running before executing the script
 - Configure authentication and environment variables as needed
+
+## Streaming Server
+
+The OpenSearch MCP server supports a streaming transport that includes both SSE and HTTP streaming. The previous SSE server is now part of the streaming server and will be deprecated in the future. Use the streaming transport for all new integrations.

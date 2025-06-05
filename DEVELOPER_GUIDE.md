@@ -33,8 +33,8 @@ cd src
 # Run stdio server
 uv run python -m mcp_server_opensearch 
 
-# Run SSE server
-uv run python -m mcp_server_opensearch --transport sse
+# Run streaming server (SSE/HTTP streaming)
+uv run python -m mcp_server_opensearch --transport streaming
 ```
 
 ### Managing Dependencies
@@ -63,7 +63,9 @@ uv sync
                 "--",
                 "python",
                 "-m",
-                "mcp_server_opensearch"
+                "mcp_server_opensearch",
+                "--transport",
+                "streaming"
             ],
             "env": {
                 // Optional
