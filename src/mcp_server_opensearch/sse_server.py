@@ -11,19 +11,14 @@ from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp.types import TextContent, Tool
-from tools.common import get_enabled_tools
-from opensearch.helper import get_opensearch_version
+from tools.common import get_tools
 
-import os
 import logging
 
 
-def create_mcp_server() -> Server:
+def create_mcp_server(mode: str = "single") -> Server:
     server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
-    version = get_opensearch_version(opensearch_url)
-    enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
+    enabled_tools = get_tools(mode)
     logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
 
     @server.list_tools()
@@ -83,8 +78,8 @@ class MCPStarletteApp:
         )
 
 
-async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
-    mcp_server = create_mcp_server()
+async def serve(host: str = "0.0.0.0", port: int = 9900, mode: str = "single") -> None:
+    mcp_server = create_mcp_server(mode)
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 

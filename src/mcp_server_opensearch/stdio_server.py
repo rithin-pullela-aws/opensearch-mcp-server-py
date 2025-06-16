@@ -4,19 +4,14 @@
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
-from tools.common import get_enabled_tools
-from opensearch.helper import get_opensearch_version
-import os
+from tools.common import get_tools
 import logging
 
 
 # --- Server setup ---
-async def serve() -> None:
+async def serve(mode: str = "single") -> None:
     server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
-    version = get_opensearch_version(opensearch_url)
-    enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
+    enabled_tools = get_tools(mode)
     logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
 
     @server.list_tools()
