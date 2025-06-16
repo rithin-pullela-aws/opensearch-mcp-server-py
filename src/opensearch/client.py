@@ -14,14 +14,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
-OPENSEARCH_SERVICE = "es"
-OPENSEARCH_SERVERLESS_SERVICE = "aoss"
+OPENSEARCH_SERVICE = 'es'
+OPENSEARCH_SERVERLESS_SERVICE = 'aoss'
+
 
 # This file should expose the OpenSearch py client
 def initialize_client(opensearch_url: str) -> OpenSearch:
     """
     Initialize and return an OpenSearch client with appropriate authentication.
-    
+
     The function attempts to authenticate in the following order:
     1. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
     2. AWS IAM authentication using boto3 credentials
@@ -30,26 +31,26 @@ def initialize_client(opensearch_url: str) -> OpenSearch:
 
     Args:
         opensearch_url (str): The URL of the OpenSearch cluster. Must be a non-empty string.
-    
+
     Returns:
         OpenSearch: An initialized OpenSearch client instance.
-    
+
     Raises:
         ValueError: If opensearch_url is empty or invalid
         RuntimeError: If no valid authentication method is available
     """
     if not opensearch_url:
-        raise ValueError("OpenSearch URL cannot be empty")
+        raise ValueError('OpenSearch URL cannot be empty')
 
-    opensearch_username = os.getenv("OPENSEARCH_USERNAME", "")
-    opensearch_password = os.getenv("OPENSEARCH_PASSWORD", "")
-    
+    opensearch_username = os.getenv('OPENSEARCH_USERNAME', '')
+    opensearch_password = os.getenv('OPENSEARCH_PASSWORD', '')
+
     # Check if using OpenSearch Serverless
-    is_serverless = os.getenv("AWS_OPENSEARCH_SERVERLESS", "").lower() == "true"
+    is_serverless = os.getenv('AWS_OPENSEARCH_SERVERLESS', '').lower() == 'true'
     service_name = OPENSEARCH_SERVERLESS_SERVICE if is_serverless else OPENSEARCH_SERVICE
-    
+
     if is_serverless:
-        logger.info("Using OpenSearch Serverless with service name: aoss")
+        logger.info('Using OpenSearch Serverless with service name: aoss')
 
     # Parse the OpenSearch domain URL
     parsed_url = urlparse(opensearch_url)
@@ -57,7 +58,7 @@ def initialize_client(opensearch_url: str) -> OpenSearch:
     # Common client configuration
     client_kwargs: Dict[str, Any] = {
         'hosts': [opensearch_url],
-        'use_ssl': (parsed_url.scheme == "https"),
+        'use_ssl': (parsed_url.scheme == 'https'),
         'verify_certs': True,
         'connection_class': RequestsHttpConnection,
     }
@@ -71,9 +72,9 @@ def initialize_client(opensearch_url: str) -> OpenSearch:
     try:
         session = boto3.Session()
         credentials = session.get_credentials()
-        aws_region = session.region_name or os.getenv("AWS_REGION")
+        aws_region = session.region_name or os.getenv('AWS_REGION')
         if not aws_region:
-            raise RuntimeError("AWS region not found, please specify region using `aws configure`")
+            raise RuntimeError('AWS region not found, please specify region using `aws configure`')
         if credentials:
             aws_auth = AWS4Auth(
                 refreshable_credentials=credentials,
@@ -83,6 +84,6 @@ def initialize_client(opensearch_url: str) -> OpenSearch:
             client_kwargs['http_auth'] = aws_auth
             return OpenSearch(**client_kwargs)
     except (boto3.exceptions.Boto3Error, Exception) as e:
-        logger.error(f"Failed to get AWS credentials: {str(e)}")
+        logger.error(f'Failed to get AWS credentials: {str(e)}')
 
-    raise RuntimeError("No valid AWS or basic authentication provided for OpenSearch")
+    raise RuntimeError('No valid AWS or basic authentication provided for OpenSearch')

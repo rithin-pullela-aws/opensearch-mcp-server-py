@@ -11,7 +11,7 @@ from semver import Version
 # these functions will be used in tools folder to eventually write more complex tools
 def list_indices(opensearch_url: str) -> json:
     client = initialize_client(opensearch_url)
-    response = client.cat.indices(format="json")
+    response = client.cat.indices(format='json')
     return response
 
 
@@ -29,7 +29,7 @@ def search_index(opensearch_url: str, index: str, query: Any) -> json:
 
 def get_shards(opensearch_url: str, index: str) -> json:
     client = initialize_client(opensearch_url)
-    response = client.cat.shards(index=index, format="json")
+    response = client.cat.shards(index=index, format='json')
     return response
 
 
@@ -45,4 +45,4 @@ def get_opensearch_version(opensearch_url: str) -> Version:
     """
     client = initialize_client(opensearch_url)
     response = client.info()
-    return Version.parse(response["version"]["number"])
+    return Version.parse(response['version']['number'])

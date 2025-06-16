@@ -12,12 +12,12 @@ import logging
 
 # --- Server setup ---
 async def serve() -> None:
-    server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
+    server = Server('opensearch-mcp-server')
+    opensearch_url = os.getenv('OPENSEARCH_URL', 'https://localhost:9200')
     version = get_opensearch_version(opensearch_url)
     enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
-    logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
+    logging.info(f'Connected OpenSearch version: {version}')
+    logging.info(f'Enabled tools: {list(enabled_tools.keys())}')
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -26,8 +26,8 @@ async def serve() -> None:
             tools.append(
                 Tool(
                     name=tool_name,
-                    description=tool_info["description"],
-                    inputSchema=tool_info["input_schema"],
+                    description=tool_info['description'],
+                    inputSchema=tool_info['input_schema'],
                 )
             )
         return tools
@@ -36,9 +36,9 @@ async def serve() -> None:
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         tool = enabled_tools.get(name)
         if not tool:
-            raise ValueError(f"Unknown or disabled tool: {name}")
-        parsed = tool["args_model"](**arguments)
-        return await tool["function"](parsed)
+            raise ValueError(f'Unknown or disabled tool: {name}')
+        parsed = tool['args_model'](**arguments)
+        return await tool['function'](parsed)
 
     # Start stdio-based MCP server
     options = server.create_initialization_options()

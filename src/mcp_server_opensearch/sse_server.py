@@ -19,12 +19,12 @@ import logging
 
 
 def create_mcp_server() -> Server:
-    server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
+    server = Server('opensearch-mcp-server')
+    opensearch_url = os.getenv('OPENSEARCH_URL', 'https://localhost:9200')
     version = get_opensearch_version(opensearch_url)
     enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
-    logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
+    logging.info(f'Connected OpenSearch version: {version}')
+    logging.info(f'Enabled tools: {list(enabled_tools.keys())}')
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -33,8 +33,8 @@ def create_mcp_server() -> Server:
             tools.append(
                 Tool(
                     name=tool_name,
-                    description=tool_info["description"],
-                    inputSchema=tool_info["input_schema"],
+                    description=tool_info['description'],
+                    inputSchema=tool_info['input_schema'],
                 )
             )
         return tools
@@ -43,9 +43,9 @@ def create_mcp_server() -> Server:
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         tool = enabled_tools.get(name)
         if not tool:
-            raise ValueError(f"Unknown or disabled tool: {name}")
-        parsed = tool["args_model"](**arguments)
-        return await tool["function"](parsed)
+            raise ValueError(f'Unknown or disabled tool: {name}')
+        parsed = tool['args_model'](**arguments)
+        return await tool['function'](parsed)
 
     return server
 
@@ -53,7 +53,7 @@ def create_mcp_server() -> Server:
 class MCPStarletteApp:
     def __init__(self, mcp_server: Server):
         self.mcp_server = mcp_server
-        self.sse = SseServerTransport("/messages/")
+        self.sse = SseServerTransport('/messages/')
 
     async def handle_sse(self, request: Request) -> None:
         async with self.sse.connect_sse(
@@ -71,19 +71,19 @@ class MCPStarletteApp:
         return Response()
 
     async def handle_health(self, request: Request) -> Response:
-        return Response("OK", status_code=200)
+        return Response('OK', status_code=200)
 
     def create_app(self) -> Starlette:
         return Starlette(
             routes=[
-                Route("/sse", endpoint=self.handle_sse, methods=["GET"]),
-                Route("/health", endpoint=self.handle_health, methods=["GET"]),
-                Mount("/messages/", app=self.sse.handle_post_message),
+                Route('/sse', endpoint=self.handle_sse, methods=['GET']),
+                Route('/health', endpoint=self.handle_health, methods=['GET']),
+                Mount('/messages/', app=self.sse.handle_post_message),
             ]
         )
 
 
-async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
+async def serve(host: str = '0.0.0.0', port: int = 9900) -> None:
     mcp_server = create_mcp_server()
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
@@ -97,10 +97,10 @@ async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
     await server.serve()
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run OpenSearch MCP SSE-based server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=9900, help="Port to listen on")
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Run OpenSearch MCP SSE-based server')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to')
+    parser.add_argument('--port', type=int, default=9900, help='Port to listen on')
     args = parser.parse_args()
 
     import asyncio

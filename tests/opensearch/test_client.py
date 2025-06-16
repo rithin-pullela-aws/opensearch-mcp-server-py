@@ -10,6 +10,7 @@ import boto3
 
 from opensearch.client import initialize_client
 
+
 class TestOpenSearchClient:
     def setup_method(self):
         """Setup that runs before each test method"""
@@ -29,8 +30,8 @@ class TestOpenSearchClient:
     def test_initialize_client_empty_url(self):
         """Test that initialize_client raises ValueError when opensearch_url is empty"""
         with pytest.raises(ValueError) as exc_info:
-            initialize_client("")
-        assert str(exc_info.value) == "OpenSearch URL cannot be empty"
+            initialize_client('')
+        assert str(exc_info.value) == 'OpenSearch URL cannot be empty'
 
     @patch('opensearch.client.OpenSearch')
     def test_initialize_client_basic_auth(self, mock_opensearch):
@@ -53,7 +54,7 @@ class TestOpenSearchClient:
             use_ssl=True,
             verify_certs=True,
             connection_class=RequestsHttpConnection,
-            http_auth=('test-user', 'test-password')
+            http_auth=('test-user', 'test-password'),
         )
 
     @patch('opensearch.client.OpenSearch')
@@ -99,13 +100,17 @@ class TestOpenSearchClient:
 
         # Mock AWS session to raise an error
         mock_session_instance = Mock()
-        mock_session_instance.get_credentials.side_effect = boto3.exceptions.Boto3Error("AWS credentials error")
+        mock_session_instance.get_credentials.side_effect = boto3.exceptions.Boto3Error(
+            'AWS credentials error'
+        )
         mock_session.return_value = mock_session_instance
 
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
             initialize_client('https://test-opensearch-domain.com')
-        assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"
+        assert (
+            str(exc_info.value) == 'No valid AWS or basic authentication provided for OpenSearch'
+        )
 
     @patch('opensearch.client.OpenSearch')
     @patch('opensearch.client.boto3.Session')
@@ -119,4 +124,6 @@ class TestOpenSearchClient:
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
             initialize_client('https://test-opensearch-domain.com')
-        assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"
+        assert (
+            str(exc_info.value) == 'No valid AWS or basic authentication provided for OpenSearch'
+        )

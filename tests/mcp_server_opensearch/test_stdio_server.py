@@ -9,20 +9,18 @@ from mcp.types import Tool, TextContent
 from contextlib import asynccontextmanager
 
 # Set environment variables
-os.environ["OPENSEARCH_URL"] = "https://test-domain.us-west-2.es.amazonaws.com"
-os.environ["AWS_REGION"] = "us-west-2"
-os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
-os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"
+os.environ['OPENSEARCH_URL'] = 'https://test-domain.us-west-2.es.amazonaws.com'
+os.environ['AWS_REGION'] = 'us-west-2'
+os.environ['AWS_ACCESS_KEY_ID'] = 'test-access-key'
+os.environ['AWS_SECRET_ACCESS_KEY'] = 'test-secret-key'
 
 # Mock tool registry for testing
 MOCK_TOOL_REGISTRY = {
-    "test_tool": {
-        "description": "Test tool",
-        "input_schema": {"type": "object", "properties": {}},
-        "args_model": Mock(),
-        "function": AsyncMock(
-            return_value=[TextContent(type="text", text="test result")]
-        ),
+    'test_tool': {
+        'description': 'Test tool',
+        'input_schema': {'type': 'object', 'properties': {}},
+        'args_model': Mock(),
+        'function': AsyncMock(return_value=[TextContent(type='text', text='test result')]),
     }
 }
 
@@ -30,8 +28,8 @@ MOCK_TOOL_REGISTRY = {
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
     with (
-        patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
-        patch("opensearch.client.initialize_client", return_value=Mock()),
+        patch('opensearch.helper.get_opensearch_version', return_value='2.9.0'),
+        patch('opensearch.client.initialize_client', return_value=Mock()),
     ):
         yield
 
@@ -45,14 +43,14 @@ def mock_server():
 
     # Set up the instance's create_initialization_options
     mock_instance.create_initialization_options.return_value = {
-        "protocolVersion": "1.0",
-        "serverInfo": {"name": "test-server", "version": "1.0"},
+        'protocolVersion': '1.0',
+        'serverInfo': {'name': 'test-server', 'version': '1.0'},
     }
 
     # Make the mock class return our mock instance
     mock.return_value = mock_instance
 
-    with patch("mcp_server_opensearch.stdio_server.Server", mock):
+    with patch('mcp_server_opensearch.stdio_server.Server', mock):
         yield mock  # Return the mock class
 
 
@@ -66,7 +64,7 @@ def mock_stdio():
     async def mock_context():
         yield reader, writer
 
-    with patch("mcp_server_opensearch.stdio_server.stdio_server", mock_context):
+    with patch('mcp_server_opensearch.stdio_server.stdio_server', mock_context):
         yield reader, writer
 
 
@@ -74,18 +72,16 @@ def mock_stdio():
 def mock_tool_registry():
     """Replace the tool registry with test data"""
     mock_registry = {
-        "test_tool": {
-            "description": "Test tool",
-            "input_schema": {"type": "object", "properties": {}},
-            "args_model": Mock(),
-            "function": AsyncMock(
-                return_value=[TextContent(type="text", text="test result")]
-            ),
+        'test_tool': {
+            'description': 'Test tool',
+            'input_schema': {'type': 'object', 'properties': {}},
+            'args_model': Mock(),
+            'function': AsyncMock(return_value=[TextContent(type='text', text='test result')]),
         }
     }
 
     with patch(
-        "mcp_server_opensearch.stdio_server.get_enabled_tools",
+        'mcp_server_opensearch.stdio_server.get_enabled_tools',
         return_value=MOCK_TOOL_REGISTRY,
     ):
         yield MOCK_TOOL_REGISTRY
@@ -123,14 +119,14 @@ async def test_list_tools(mock_server, mock_stdio, mock_tool_registry):
     # Get the list_tools handler
     list_tools_handler = None
     for call in mock_server.mock_calls:
-        if "list_tools" in str(call):
+        if 'list_tools' in str(call):
             # Create an async function to return as the handler
             async def mock_list_tools():
                 return [
                     Tool(
-                        name="test_tool",
-                        description="Test tool",
-                        inputSchema={"type": "object", "properties": {}},
+                        name='test_tool',
+                        description='Test tool',
+                        inputSchema={'type': 'object', 'properties': {}},
                     )
                 ]
 
@@ -142,8 +138,8 @@ async def test_list_tools(mock_server, mock_stdio, mock_tool_registry):
     # Test the list_tools handler
     tools = await list_tools_handler()
     assert len(tools) == 1
-    assert tools[0].name == "test_tool"
-    assert tools[0].description == "Test tool"
+    assert tools[0].name == 'test_tool'
+    assert tools[0].description == 'Test tool'
 
 
 @pytest.mark.asyncio
@@ -160,15 +156,15 @@ async def test_call_tool(mock_server, mock_stdio, mock_tool_registry):
     # Get the call_tool handler
     call_tool_handler = None
     for call in mock_server.mock_calls:
-        if "call_tool" in str(call):
+        if 'call_tool' in str(call):
             # Create an async function to return as the handler
             async def mock_call_tool(tool_name: str, arguments: dict):
                 if tool_name not in mock_tool_registry:
-                    raise ValueError(f"Unknown tool: {tool_name}")
+                    raise ValueError(f'Unknown tool: {tool_name}')
 
                 tool = mock_tool_registry[tool_name]
                 # Simulate the tool execution
-                return [TextContent(type="text", text="test result")]
+                return [TextContent(type='text', text='test result')]
 
             call_tool_handler = mock_call_tool
             break
@@ -176,9 +172,9 @@ async def test_call_tool(mock_server, mock_stdio, mock_tool_registry):
     assert call_tool_handler is not None
 
     # Test the call_tool handler
-    result = await call_tool_handler("test_tool", {})
+    result = await call_tool_handler('test_tool', {})
     assert len(result) == 1
-    assert result[0].text == "test result"
+    assert result[0].text == 'test result'
 
 
 @pytest.mark.asyncio
@@ -187,12 +183,12 @@ async def test_server_error_handling(mock_server, mock_stdio, mock_tool_registry
     reader, writer = mock_stdio
 
     # Simulate an error in the server
-    mock_server.return_value.run.side_effect = Exception("Test error")
+    mock_server.return_value.run.side_effect = Exception('Test error')
 
     # Start the server
     from mcp_server_opensearch.stdio_server import serve
 
-    with pytest.raises(Exception, match="Test error"):
+    with pytest.raises(Exception, match='Test error'):
         await serve()
 
 
@@ -202,7 +198,7 @@ async def test_tool_execution_error(mock_server, mock_stdio, mock_tool_registry)
     reader, writer = mock_stdio
 
     # Modify mock tool to raise an error
-    mock_tool_registry["test_tool"]["function"].side_effect = Exception("Tool error")
+    mock_tool_registry['test_tool']['function'].side_effect = Exception('Tool error')
 
     # Start the server
     from mcp_server_opensearch.stdio_server import serve
@@ -213,16 +209,16 @@ async def test_tool_execution_error(mock_server, mock_stdio, mock_tool_registry)
     # Get the call_tool handler
     call_tool_handler = None
     for call in mock_server.mock_calls:
-        if "call_tool" in str(call):
+        if 'call_tool' in str(call):
             # Create an async function to return as the handler
             async def mock_call_tool(tool_name: str, arguments: dict):
                 if tool_name not in mock_tool_registry:
-                    raise ValueError(f"Unknown tool: {tool_name}")
+                    raise ValueError(f'Unknown tool: {tool_name}')
 
                 tool = mock_tool_registry[tool_name]
                 # Execute the tool function which should raise the error
-                parsed = tool["args_model"](**arguments)
-                return await tool["function"](parsed)
+                parsed = tool['args_model'](**arguments)
+                return await tool['function'](parsed)
 
             call_tool_handler = mock_call_tool
             break
@@ -230,5 +226,5 @@ async def test_tool_execution_error(mock_server, mock_stdio, mock_tool_registry)
     assert call_tool_handler is not None
 
     # Test tool execution error
-    with pytest.raises(Exception, match="Tool error"):
-        await call_tool_handler("test_tool", {})
+    with pytest.raises(Exception, match='Tool error'):
+        await call_tool_handler('test_tool', {})
