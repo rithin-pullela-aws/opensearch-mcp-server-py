@@ -29,10 +29,13 @@ MOCK_TOOL_REGISTRY = {
 
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
+    """Mock OpenSearch client and version check"""
+    mock_client = Mock()
+    mock_client.info.return_value = {"version": {"number": "3.0.0"}}
+    
     with (
         patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
         patch("opensearch.client.initialize_client", return_value=Mock()),
-        patch("common.tool_filter.get_tools", return_value=MOCK_TOOL_REGISTRY),
     ):
         yield
 
@@ -74,15 +77,23 @@ def mock_stdio():
 @pytest.fixture
 def mock_tool_registry():
     """Replace the tool registry with test data"""
-    return MOCK_TOOL_REGISTRY
+    mock_registry = {
+        "test_tool": {
+            "description": "Test tool",
+            "input_schema": {"type": "object", "properties": {}},
+            "args_model": Mock(),
+            "function": AsyncMock(
+                return_value=[TextContent(type="text", text="test result")]
+            ),
+        }
+    }
 
-@pytest.fixture
-def mock_generate_tools():
-    """Mock the generate_tools_from_openapi function"""
-    mock_generate = AsyncMock()
-    
-    with patch("mcp_server_opensearch.stdio_server.generate_tools_from_openapi", mock_generate):
-        yield mock_generate
+    with patch(
+        "mcp_server_opensearch.stdio_server.get_enabled_tools",
+        return_value=MOCK_TOOL_REGISTRY,
+    ):
+        yield MOCK_TOOL_REGISTRY
+
 
 @pytest.mark.asyncio
 async def test_serve_initialization(mock_server, mock_stdio, mock_tool_registry, mock_generate_tools):

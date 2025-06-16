@@ -9,19 +9,13 @@ from mcp.types import Tool, TextContent
 
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
+    """Mock OpenSearch client and version check"""
+    mock_client = Mock()
+    mock_client.info.return_value = {"version": {"number": "3.0.0"}}
+    
     with (
         patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
         patch("opensearch.client.initialize_client", return_value=Mock()),
-        patch("common.tool_filter.get_tools", return_value={
-            "test-tool": {
-                "description": "Test tool",
-                "input_schema": {"type": "object"},
-                "args_model": Mock(),
-                "function": AsyncMock(
-                    return_value=[TextContent(type="text", text="test result")]
-                ),
-            }
-        }),
     ):
         yield
 
@@ -42,7 +36,8 @@ class TestMCPServer:
         }
 
     @pytest.mark.asyncio
-    async def test_create_mcp_server(self, mock_tool_registry):
+    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    async def test_create_mcp_server(self, mock_registry, mock_tool_registry):
         """Test MCP server creation"""
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
@@ -52,7 +47,8 @@ class TestMCPServer:
         assert server.name == "opensearch-mcp-server"
 
     @pytest.mark.asyncio
-    async def test_list_tools(self, mock_tool_registry):
+    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    async def test_list_tools(self, mock_registry, mock_tool_registry):
         """Test listing available tools"""
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
@@ -76,7 +72,8 @@ class TestMCPServer:
         assert tools[0].inputSchema == {"type": "object"}
 
     @pytest.mark.asyncio
-    async def test_call_tool(self, mock_tool_registry):
+    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    async def test_call_tool(self, mock_registry, mock_tool_registry):
         """ "Test calling the tool"""
         # Create server and mock the call_tool decorator
         mock_call_tool = AsyncMock()

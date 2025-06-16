@@ -10,6 +10,7 @@ import boto3
 from common.tool_params import baseToolArgs
 
 from opensearch.client import initialize_client
+from opensearch.tool_params import baseToolArgs
 
 class TestOpenSearchClient:
     def setup_method(self):
@@ -31,6 +32,7 @@ class TestOpenSearchClient:
         """Test that initialize_client raises ValueError when opensearch_url is empty"""
         with pytest.raises(ValueError) as exc_info:
             initialize_client(baseToolArgs())
+
         assert str(exc_info.value) == "OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable"
 
     @patch('opensearch.client.OpenSearch')
