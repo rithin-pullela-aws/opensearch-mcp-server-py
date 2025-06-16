@@ -4,6 +4,7 @@
 import pytest
 from unittest.mock import patch
 from semver import Version
+from opensearch.tool_params import ListIndicesArgs, GetIndexMappingArgs, SearchIndexArgs, GetShardsArgs, baseToolArgs
 
 
 class TestOpenSearchHelper:
@@ -34,12 +35,12 @@ class TestOpenSearchHelper:
         mock_client.cat.indices.return_value = mock_response
 
         # Execute
-        result = self.list_indices("https://test-opensearch-domain.com")
+        result = self.list_indices(ListIndicesArgs(opensearch_url="https://test-opensearch-domain.com"))
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-            "https://test-opensearch-domain.com"
+            ListIndicesArgs(opensearch_url="https://test-opensearch-domain.com")
         )
         mock_client.cat.indices.assert_called_once_with(format="json")
 
@@ -62,13 +63,19 @@ class TestOpenSearchHelper:
 
         # Execute
         result = self.get_index_mapping(
-            "https://test-opensearch-domain.com", "test-index"
+            GetIndexMappingArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index"
+            )
         )
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-            "https://test-opensearch-domain.com"
+            GetIndexMappingArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index"
+            )
         )
         mock_client.indices.get_mapping.assert_called_once_with(index="test-index")
 
@@ -92,13 +99,21 @@ class TestOpenSearchHelper:
 
         # Execute
         result = self.search_index(
-            "https://test-opensearch-domain.com", "test-index", test_query
+            SearchIndexArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index",
+                query=test_query
+            )
         )
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-            "https://test-opensearch-domain.com"
+            SearchIndexArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index",
+                query=test_query
+            )
         )
         mock_client.search.assert_called_once_with(index="test-index", body=test_query)
 
@@ -122,12 +137,20 @@ class TestOpenSearchHelper:
         mock_client.cat.shards.return_value = mock_response
 
         # Execute
-        result = self.get_shards("https://test-opensearch-domain.com", "test-index")
+        result = self.get_shards(
+            GetShardsArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index"
+            )
+        )
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-            "https://test-opensearch-domain.com"
+            GetShardsArgs(
+                opensearch_url="https://test-opensearch-domain.com",
+                index="test-index"
+            )
         )
         mock_client.cat.shards.assert_called_once_with(
             index="test-index", format="json"
@@ -142,7 +165,7 @@ class TestOpenSearchHelper:
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.list_indices("https://test-opensearch-domain.com")
+            self.list_indices(ListIndicesArgs(opensearch_url="https://test-opensearch-domain.com"))
         assert str(exc_info.value) == "Connection error"
 
     @patch("opensearch.helper.initialize_client")
@@ -155,7 +178,10 @@ class TestOpenSearchHelper:
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
             self.get_index_mapping(
-                "https://test-opensearch-domain.com", "non-existent-index"
+                GetIndexMappingArgs(
+                    opensearch_url="https://test-opensearch-domain.com",
+                    index="non-existent-index"
+                )
             )
         assert str(exc_info.value) == "Index not found"
 
@@ -169,7 +195,11 @@ class TestOpenSearchHelper:
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
             self.search_index(
-                "https://test-opensearch-domain.com", "test-index", {"invalid": "query"}
+                SearchIndexArgs(
+                    opensearch_url="https://test-opensearch-domain.com",
+                    index="test-index",
+                    query={"invalid": "query"}
+                )
             )
         assert str(exc_info.value) == "Invalid query"
 
@@ -182,7 +212,12 @@ class TestOpenSearchHelper:
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            self.get_shards("https://test-opensearch-domain.com", "non-existent-index")
+            self.get_shards(
+                GetShardsArgs(
+                    opensearch_url="https://test-opensearch-domain.com",
+                    index="non-existent-index"
+                )
+            )
         assert str(exc_info.value) == "Shard not found"
 
     @patch("opensearch.helper.initialize_client")
@@ -196,14 +231,12 @@ class TestOpenSearchHelper:
         mock_client.info.return_value = mock_response
 
         # Execute
-        result = get_opensearch_version("https://test-opensearch-domain.com")
+        result = get_opensearch_version()
 
         # Assert
         assert isinstance(result, Version)
         assert str(result) == "2.11.1"
-        mock_initialize_client.assert_called_once_with(
-            "https://test-opensearch-domain.com"
-        )
+        mock_initialize_client.assert_called_once_with(baseToolArgs())
         mock_client.info.assert_called_once_with()
 
     @patch("opensearch.helper.initialize_client")
@@ -217,5 +250,5 @@ class TestOpenSearchHelper:
 
         # Execute and assert
         with pytest.raises(Exception) as exc_info:
-            get_opensearch_version("https://test-opensearch-domain.com")
+            get_opensearch_version()
         assert str(exc_info.value) == "Failed to get version"

@@ -29,9 +29,14 @@ MOCK_TOOL_REGISTRY = {
 
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
+    """Mock OpenSearch client and version check"""
+    mock_client = Mock()
+    mock_client.info.return_value = {"version": {"number": "3.0.0"}}
+    
     with (
-        patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
-        patch("opensearch.client.initialize_client", return_value=Mock()),
+        patch("opensearch.helper.get_opensearch_version", return_value="3.0.0"),
+        patch("opensearch.client.initialize_client", return_value=mock_client),
+        patch("tools.common.get_opensearch_version", return_value="3.0.0")
     ):
         yield
 
@@ -85,7 +90,7 @@ def mock_tool_registry():
     }
 
     with patch(
-        "mcp_server_opensearch.stdio_server.get_enabled_tools",
+        "tools.common.get_tools",
         return_value=MOCK_TOOL_REGISTRY,
     ):
         yield MOCK_TOOL_REGISTRY

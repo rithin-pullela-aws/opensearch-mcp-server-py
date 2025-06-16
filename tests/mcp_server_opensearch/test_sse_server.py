@@ -8,9 +8,14 @@ from mcp.types import Tool, TextContent
 
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
+    """Mock OpenSearch client and version check"""
+    mock_client = Mock()
+    mock_client.info.return_value = {"version": {"number": "3.0.0"}}
+    
     with (
-        patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
-        patch("opensearch.client.initialize_client", return_value=Mock()),
+        patch("opensearch.helper.get_opensearch_version", return_value="3.0.0"),
+        patch("opensearch.client.initialize_client", return_value=mock_client),
+        patch("tools.common.get_opensearch_version", return_value="3.0.0")
     ):
         yield
 
@@ -30,7 +35,7 @@ class TestMCPServer:
             }
         }
 
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    @patch("tools.common.get_tools")
     def test_create_mcp_server(self, mock_registry, mock_tool_registry):
         """Test MCP server creation"""
         # Setup mock registry
@@ -44,7 +49,7 @@ class TestMCPServer:
         assert server.name == "opensearch-mcp-server"
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    @patch("tools.common.get_tools")
     async def test_list_tools(self, mock_registry, mock_tool_registry):
         """Test listing available tools"""
         # Setup mock registry
@@ -72,7 +77,7 @@ class TestMCPServer:
         assert tools[0].inputSchema == {"type": "object"}
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
+    @patch("tools.common.get_tools")
     async def test_call_tool(self, mock_registry, mock_tool_registry):
         """ "Test calling the tool"""
         # Setup mock registry

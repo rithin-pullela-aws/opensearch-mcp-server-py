@@ -9,13 +9,14 @@ from requests_aws4auth import AWS4Auth
 import boto3
 
 from opensearch.client import initialize_client
+from opensearch.tool_params import baseToolArgs
 
 class TestOpenSearchClient:
     def setup_method(self):
         """Setup that runs before each test method"""
         # Clear any existing environment variables
         self.original_env = {}
-        for key in ['OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD', 'AWS_REGION']:
+        for key in ['OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD', 'AWS_REGION', 'OPENSEARCH_URL']:
             if key in os.environ:
                 self.original_env[key] = os.environ[key]
                 del os.environ[key]
@@ -29,8 +30,8 @@ class TestOpenSearchClient:
     def test_initialize_client_empty_url(self):
         """Test that initialize_client raises ValueError when opensearch_url is empty"""
         with pytest.raises(ValueError) as exc_info:
-            initialize_client("")
-        assert str(exc_info.value) == "OpenSearch URL cannot be empty"
+            initialize_client(baseToolArgs(opensearch_url=""))
+        assert str(exc_info.value) == "OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable"
 
     @patch('opensearch.client.OpenSearch')
     def test_initialize_client_basic_auth(self, mock_opensearch):
@@ -44,7 +45,7 @@ class TestOpenSearchClient:
         mock_opensearch.return_value = mock_client
 
         # Execute
-        client = initialize_client('https://test-opensearch-domain.com')
+        client = initialize_client(baseToolArgs(opensearch_url='https://test-opensearch-domain.com'))
 
         # Assert
         assert client == mock_client
@@ -78,7 +79,7 @@ class TestOpenSearchClient:
         mock_opensearch.return_value = mock_client
 
         # Execute
-        client = initialize_client('https://test-opensearch-domain.com')
+        client = initialize_client(baseToolArgs(opensearch_url='https://test-opensearch-domain.com'))
 
         # Assert
         assert client == mock_client
@@ -104,7 +105,7 @@ class TestOpenSearchClient:
 
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
-            initialize_client('https://test-opensearch-domain.com')
+            initialize_client(baseToolArgs(opensearch_url='https://test-opensearch-domain.com'))
         assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"
 
     @patch('opensearch.client.OpenSearch')
@@ -118,5 +119,5 @@ class TestOpenSearchClient:
 
         # Execute and assert
         with pytest.raises(RuntimeError) as exc_info:
-            initialize_client('https://test-opensearch-domain.com')
+            initialize_client(baseToolArgs(opensearch_url='https://test-opensearch-domain.com'))
         assert str(exc_info.value) == "No valid AWS or basic authentication provided for OpenSearch"
