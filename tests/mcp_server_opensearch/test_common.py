@@ -1,6 +1,6 @@
 import pytest
 from semver import Version
-from tools.common import is_tool_compatible
+from common.tool_filter import is_tool_compatible
 
 
 class TestIsToolCompatible:

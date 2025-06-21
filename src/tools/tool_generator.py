@@ -4,13 +4,12 @@
 import yaml
 import aiohttp
 import json
-import os
 from pydantic import BaseModel, create_model
 from typing import Dict, Any, List
 from mcp.types import TextContent
-from opensearchpy import OpenSearch
 from .tools import TOOL_REGISTRY
-
+from common.tool_params import baseToolArgs
+from opensearch.client import initialize_client
 # Constants
 BASE_URL = "https://raw.githubusercontent.com/opensearch-project/opensearch-api-specification/refs/heads/main/spec/namespaces"
 SPEC_FILES = ["cluster.yaml", "_core.yaml"]
@@ -44,14 +43,9 @@ def group_endpoints_by_operation(paths: Dict[str, Dict]) -> Dict[str, List[Dict]
 
 def extract_parameters(endpoints: list[dict]) -> tuple[dict[str, dict], set]:
     """Extract parameters from endpoints."""
-    # Add opensearch_url parameter to all tools
-    all_parameters = {
-        'opensearch_url': {
-            "default": os.getenv("OPENSEARCH_URL", ""),
-            "title": "Opensearch Url",
-            "type": "string"
-        }
-    }
+    # Add baseToolArgs to all tools, will be filtered out later in single mode
+    base_schema = baseToolArgs.model_json_schema()
+    all_parameters = base_schema.get('properties', {})
     path_parameters = set()
 
     # Track which path parameters appear in which endpoints
@@ -101,7 +95,6 @@ def extract_parameters(endpoints: list[dict]) -> tuple[dict[str, dict], set]:
     op_group = endpoints[0]['details'].get('x-operation-group', '')
     if op_group in ['explain', 'msearch'] and 'body' in all_parameters:
         all_parameters['body']["required"] = True
-    
     return all_parameters, path_parameters
 
 def process_body(body: Any, tool_name: str) -> Any:
@@ -150,7 +143,7 @@ def select_endpoint(endpoints: list[dict], params: dict) -> dict:
                 if not any('{' in p for p in ep['path'].split('/'))), 
                endpoints[0])
 
-def generate_tool_from_group(tool_name: str, endpoints: List[Dict], client: OpenSearch) -> Dict[str, Any]:
+def generate_tool_from_group(tool_name: str, endpoints: List[Dict]) -> Dict[str, Any]:
     """Generate a single tool from a group of related endpoints."""
     # Use the description from the first endpoint in the group
     details = endpoints[0]['details']
@@ -161,31 +154,32 @@ def generate_tool_from_group(tool_name: str, endpoints: List[Dict], client: Open
     max_version = details.get('x-version-deprecated', '99.99.99')
 
     all_parameters, path_parameters = extract_parameters(endpoints)
-
     # Create Pydantic model for arguments
     field_definitions = {
         name: (Any if name == 'body' else str, info.get('default'))
         for name, info in all_parameters.items()
     }
     args_model = create_model(f"{tool_name}Args", **field_definitions)
-
     # Create the tool function that will execute the OpenSearch API
     async def tool_func(params: BaseModel) -> list[TextContent]:
         try:
-            params_dict = params.dict() if hasattr(params, 'dict') else {}
+            params_dict = params.model_dump() if hasattr(params, 'model_dump') else {}
             
-            # Handle opensearch_url
-            opensearch_url = params_dict.pop('opensearch_url', None)
-            request_client = client
-            if opensearch_url:
-                from opensearch.client import initialize_client
-                try:
-                    request_client = initialize_client(opensearch_url)
-                except Exception as e:
-                    return [TextContent(
-                        type="text",
-                        text=f"Error initializing OpenSearch client: {str(e)}"
-                    )]
+            try:
+                # Extract all baseToolArgs fields from params_dict
+                base_args = {}
+                base_fields = baseToolArgs.model_fields.keys()
+                for field in base_fields:
+                    if field in params_dict:
+                        base_args[field] = params_dict.pop(field)
+                
+                args = baseToolArgs(**base_args)
+                request_client = initialize_client(args)
+            except Exception as e:
+                return [TextContent(
+                    type="text",
+                    text=f"Error initializing OpenSearch client: {str(e)}"
+                )]
 
             # Process body and select endpoint
             body = process_body(params_dict.pop('body', None), tool_name)
@@ -240,18 +234,17 @@ def generate_tool_from_group(tool_name: str, endpoints: List[Dict], client: Open
         'max_version': max_version
     }
 
-async def generate_tools_from_openapi(client: OpenSearch) -> Dict[str, Dict[str, Any]]:
+async def generate_tools_from_openapi() -> Dict[str, Dict[str, Any]]:
     """Generate tools from OpenSearch API specification and append to TOOL_REGISTRY."""
     try:
         for spec_file in SPEC_FILES:
             spec = await fetch_github_spec(spec_file)
             grouped_ops = group_endpoints_by_operation(spec.get("paths", {}))
-
             # Generate tools for each operation group
             for group_name, endpoints in grouped_ops.items():
                 base_name = ''.join(part.title() for part in group_name.split('.'))
                 tool_name = f"{base_name.replace('_', '')}Tool"
-                TOOL_REGISTRY[tool_name] = generate_tool_from_group(base_name, endpoints, client)
+                TOOL_REGISTRY[tool_name] = generate_tool_from_group(base_name, endpoints)
 
     except Exception as e:
         print(f"Error generating tools: {e}")

@@ -1,8 +1,6 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import argparse
-import os
 import logging
 import uvicorn
 from starlette.applications import Starlette
@@ -12,22 +10,24 @@ from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp.types import TextContent, Tool
-from tools.common import get_enabled_tools
-from opensearch.helper import get_opensearch_version
 from tools.tool_generator import generate_tools_from_openapi
-from opensearch.client import initialize_client
+from common.tool_filter import get_tools
+from opensearch.client import set_profile
+from common.cluster_information import load_clusters_from_yaml
+import logging
 
-async def create_mcp_server() -> Server:
+async def create_mcp_server(mode: str = "single", profile: str = "", clusters_config: str = "") -> Server:
+    # Set the global profile if provided
+    if profile:
+        set_profile(profile)
+    
+    # Load clusters from YAML file
+    load_clusters_from_yaml(clusters_config)
+
     server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
-
     # Call tool generator
-    await generate_tools_from_openapi(initialize_client(opensearch_url))
-
-    # Filter all tools by version
-    version = get_opensearch_version(opensearch_url)
-    enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
+    await generate_tools_from_openapi()
+    enabled_tools = get_tools(mode)
     logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
 
     @server.list_tools()
@@ -86,9 +86,8 @@ class MCPStarletteApp:
             ]
         )
 
-
-async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
-    mcp_server = await create_mcp_server()
+async def serve(host: str = "0.0.0.0", port: int = 9900, mode: str = "single", profile: str = "", clusters_config: str = "") -> None:
+    mcp_server = await create_mcp_server(mode, profile, clusters_config)
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 
@@ -99,14 +98,3 @@ async def serve(host: str = "0.0.0.0", port: int = 9900) -> None:
     )
     server = uvicorn.Server(config)
     await server.serve()
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run OpenSearch MCP SSE-based server")
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=9900, help="Port to listen on")
-    args = parser.parse_args()
-
-    import asyncio
-
-    asyncio.run(serve(host=args.host, port=args.port))

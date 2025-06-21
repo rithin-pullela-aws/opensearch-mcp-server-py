@@ -2,10 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import pytest
-import json
 import yaml
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict
+from pydantic import BaseModel
 
 class TestToolGenerator:
     def setup_method(self):
@@ -195,29 +194,28 @@ class TestToolGenerator:
             }
         ]
         
-        # Mock client response
-        self.mock_client.transport.perform_request.return_value = {"count": 42}
-        
-        # Generate the tool
-        tool = self.generate_tool_from_group("Count", endpoints, self.mock_client)
-        
-        # Verify tool structure
-        assert "description" in tool
-        assert "input_schema" in tool
-        assert "function" in tool
-        assert "args_model" in tool
-        
-        # Test the tool function
-        class MockParams:
-            def dict(self):
-                return {"body": {"query": {"match_all": {}}}}
-        
-        result = await tool["function"](MockParams())
-        
-        # Verify result
-        assert len(result) == 1
-        assert result[0].type == "text"
-        self.mock_client.transport.perform_request.assert_called_once()
+        # Mock initialize_client to return our mock client
+        with patch('tools.tool_generator.initialize_client', return_value=self.mock_client):
+            # Generate the tool
+            tool = self.generate_tool_from_group("Count", endpoints)
+            
+            # Verify tool structure
+            assert "description" in tool
+            assert "input_schema" in tool
+            assert "function" in tool
+            assert "args_model" in tool
+            
+            # Test the tool function with proper Pydantic model
+            class MockParams(BaseModel):
+                body: dict = {"query": {"match_all": {}}}
+                opensearch_url: str = "https://test.com"
+            
+            result = await tool["function"](MockParams())
+            
+            # Verify result
+            assert len(result) == 1
+            assert result[0].type == "text"
+            self.mock_client.transport.perform_request.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_generate_tools_from_openapi(self):
@@ -255,7 +253,7 @@ class TestToolGenerator:
                 }
                 with patch.object(self, 'generate_tool_from_group', return_value=mock_tool):
                     # Call the function
-                    result = await self.generate_tools_from_openapi(self.mock_client)
+                    result = await self.generate_tools_from_openapi()
                     
                     # Verify results
                     assert "ClusterHealthTool" in result

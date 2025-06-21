@@ -1,0 +1,57 @@
+version: "1.0"
+description: "OpenSearch cluster configurations"
+
+
+clusters:
+  # production-cluster:
+  #   opensearch_url: "https://search-production.us-east-1.es.amazonaws.com"
+  #   iam_arn: "arn:aws:iam::123456789012:role/OpenSearchRole"
+  #   aws_region: "us-east-1"
+  
+  # staging-cluster:
+  #   opensearch_url: "https://search-staging.us-west-2.es.amazonaws.com"
+  #   iam_arn: "arn:aws:iam::123456789012:role/OpenSearchStagingRole"
+  #   aws_region: "us-west-2"
+  #   # No username/password - using IAM authentication only
+  
+  # development-cluster:
+  #   opensearch_url: "https://search-dev.eu-west-1.es.amazonaws.com"
+  #   aws_region: "eu-west-1"
+  #   opensearch_username: "dev_user"
+  #   opensearch_password: "dev_password"
+  #   # No IAM ARN - using username/password authentication only
+  
+  local-cluster:
+    opensearch_url: "http://localhost:9200"
+    opensearch_username: "admin"
+    opensearch_password: "MyPassword123!"
+    # Local development cluster with no AWS configuration 
+
+  remote-cluster:
+    opensearch_url: "https://search-rithin-test-a2jcswobchosmgqwnhgokwqz6i.us-east-2.es.amazonaws.com"
+    profile: "dev-rc"
+
+
+# Hey You have acces to 2 clustgers
+# cluster info: 
+# production-cluster
+# staging-cluster
+
+# Tool call:
+# - index name
+# - query
+# - cluster name: production-cluster
+
+
+# {
+#  openserver{
+
+#  }
+
+# }
+
+# URL, IAM ARN, Region
+
+# URL, basic auth
+
+# URL, profile

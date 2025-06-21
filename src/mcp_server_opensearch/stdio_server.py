@@ -1,28 +1,25 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import logging
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
-from tools.common import get_enabled_tools
-from opensearch.helper import get_opensearch_version
 from tools.tool_generator import generate_tools_from_openapi
-from opensearch.client import initialize_client
+from common.tool_filter import get_tools
+from opensearch.client import set_profile
+import logging
 
 # --- Server setup ---
-async def serve() -> None:
+async def serve(mode: str = "single", profile: str = "") -> None:
+    # Set the global profile if provided
+    if profile:
+        set_profile(profile)
+        
     server = Server("opensearch-mcp-server")
-    opensearch_url = os.getenv("OPENSEARCH_URL", "https://localhost:9200")
-
     # Call tool generator
-    await generate_tools_from_openapi(initialize_client(opensearch_url))
-
-    # Filter all tools by version
-    version = get_opensearch_version(opensearch_url)
-    enabled_tools = get_enabled_tools(version)
-    logging.info(f"Connected OpenSearch version: {version}")
+    await generate_tools_from_openapi()
+    enabled_tools = get_tools(mode)
     logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
 
     @server.list_tools()

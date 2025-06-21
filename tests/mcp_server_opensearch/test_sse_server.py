@@ -12,6 +12,16 @@ def patch_opensearch_version():
     with (
         patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
         patch("opensearch.client.initialize_client", return_value=Mock()),
+        patch("common.tool_filter.get_tools", return_value={
+            "test-tool": {
+                "description": "Test tool",
+                "input_schema": {"type": "object"},
+                "args_model": Mock(),
+                "function": AsyncMock(
+                    return_value=[TextContent(type="text", text="test result")]
+                ),
+            }
+        }),
     ):
         yield
 
@@ -32,12 +42,8 @@ class TestMCPServer:
         }
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_create_mcp_server(self, mock_registry, mock_tool_registry):
+    async def test_create_mcp_server(self, mock_tool_registry):
         """Test MCP server creation"""
-        # Setup mock registry
-        mock_registry.items.return_value = mock_tool_registry.items()
-
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
 
@@ -46,16 +52,12 @@ class TestMCPServer:
         assert server.name == "opensearch-mcp-server"
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_list_tools(self, mock_registry, mock_tool_registry):
+    async def test_list_tools(self, mock_tool_registry):
         """Test listing available tools"""
-        # Setup mock registry
-        mock_registry.items.return_value = mock_tool_registry.items()
-
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
 
-        server = create_mcp_server()
+        server = await create_mcp_server()
 
         # Get the tools by calling the decorated function
         tools = []
@@ -74,15 +76,8 @@ class TestMCPServer:
         assert tools[0].inputSchema == {"type": "object"}
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_call_tool(self, mock_registry, mock_tool_registry):
+    async def test_call_tool(self, mock_tool_registry):
         """ "Test calling the tool"""
-        # Setup mock registry
-        mock_registry.__getitem__.return_value = mock_tool_registry["test-tool"]
-        mock_tool_registry["test-tool"]["function"].return_value = [
-            TextContent(type="text", text="result")
-        ]
-
         # Create server and mock the call_tool decorator
         mock_call_tool = AsyncMock()
         mock_call_tool.return_value = [TextContent(type="text", text="result")]
