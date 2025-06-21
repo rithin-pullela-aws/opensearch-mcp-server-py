@@ -4,12 +4,7 @@
 import pytest
 from unittest.mock import patch
 from semver import Version
-<<<<<<< HEAD
 from common.tool_params import baseToolArgs, ListIndicesArgs, GetIndexMappingArgs, SearchIndexArgs, GetShardsArgs
-=======
-from opensearch.tool_params import ListIndicesArgs, GetIndexMappingArgs, SearchIndexArgs, GetShardsArgs, baseToolArgs
-
->>>>>>> c582046 (Add test cases)
 
 class TestOpenSearchHelper:
     def setup_method(self):
@@ -67,27 +62,13 @@ class TestOpenSearchHelper:
 
         # Execute
         result = self.get_index_mapping(
-<<<<<<< HEAD
             GetIndexMappingArgs(opensearch_url="https://test-opensearch-domain.com", index="test-index")
-=======
-            GetIndexMappingArgs(
-                opensearch_url="https://test-opensearch-domain.com",
-                index="test-index"
-            )
->>>>>>> c582046 (Add test cases)
         )
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-<<<<<<< HEAD
             GetIndexMappingArgs(opensearch_url="https://test-opensearch-domain.com", index="test-index")
-=======
-            GetIndexMappingArgs(
-                opensearch_url="https://test-opensearch-domain.com",
-                index="test-index"
-            )
->>>>>>> c582046 (Add test cases)
         )
         mock_client.indices.get_mapping.assert_called_once_with(index="test-index")
 
@@ -111,29 +92,13 @@ class TestOpenSearchHelper:
 
         # Execute
         result = self.search_index(
-<<<<<<< HEAD
             SearchIndexArgs(opensearch_url="https://test-opensearch-domain.com", index="test-index", query=test_query)
-=======
-            SearchIndexArgs(
-                opensearch_url="https://test-opensearch-domain.com",
-                index="test-index",
-                query=test_query
-            )
->>>>>>> c582046 (Add test cases)
         )
 
         # Assert
         assert result == mock_response
         mock_initialize_client.assert_called_once_with(
-<<<<<<< HEAD
             SearchIndexArgs(opensearch_url="https://test-opensearch-domain.com", index="test-index", query=test_query)
-=======
-            SearchIndexArgs(
-                opensearch_url="https://test-opensearch-domain.com",
-                index="test-index",
-                query=test_query
-            )
->>>>>>> c582046 (Add test cases)
         )
         mock_client.search.assert_called_once_with(index="test-index", body=test_query)
 

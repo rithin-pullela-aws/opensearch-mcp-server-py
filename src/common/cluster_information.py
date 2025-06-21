@@ -50,7 +50,7 @@ def get_cluster(name: str) -> ClusterInfo:
         dict: Cluster configuration or None if not found
     """
     logging.info(f"getting cluster: {name}")
-    logging.info(f"cluster registry: {cluster_registry}")
+    logging.info(f"returning: {cluster_registry.get(name)}")
     return cluster_registry.get(name)
 
 def list_clusters() -> list:
