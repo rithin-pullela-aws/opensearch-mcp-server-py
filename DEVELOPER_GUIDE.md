@@ -70,10 +70,10 @@ uv run python -m mcp_server_opensearch --profile my-profile
 ```bash
 cd src
 
-# Run with custom config file
+# Run stdio server in multi mode with custom config file
 uv run python -m mcp_server_opensearch --mode multi --config ../config/dev-clusters.yml
 
-# Run SSE server with multi mode
+# Run SSE server in multi mode with custom config file
 uv run python -m mcp_server_opensearch --mode multi --config ../config/dev-clusters.yml --transport sse
 ```
 
