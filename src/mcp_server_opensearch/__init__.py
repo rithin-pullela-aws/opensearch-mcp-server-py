@@ -32,17 +32,13 @@ def main() -> None:
     parser.add_argument(
         '--profile', default='', help='AWS profile to use for OpenSearch connection'
     )
-    parser.add_argument(
-        '--clusters_config', default='', help='YAML file containing cluster information'
-    )
+    parser.add_argument('--config', default='', help='YAML file containing cluster information')
 
     args = parser.parse_args()
 
     # Start the appropriate server based on transport type
     if args.transport == 'stdio':
-        asyncio.run(
-            serve_stdio(mode=args.mode, profile=args.profile, clusters_config=args.clusters_config)
-        )
+        asyncio.run(serve_stdio(mode=args.mode, profile=args.profile, config=args.config))
     else:
         asyncio.run(
             serve_sse(
@@ -50,7 +46,7 @@ def main() -> None:
                 port=args.port,
                 mode=args.mode,
                 profile=args.profile,
-                clusters_config=args.clusters_config,
+                config=args.config,
             )
         )
 

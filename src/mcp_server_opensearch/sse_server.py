@@ -15,9 +15,7 @@ from tools.tool_filter import get_tools
 from tools.tool_generator import generate_tools_from_openapi
 
 
-async def create_mcp_server(
-    mode: str = 'single', profile: str = '', clusters_config: str = ''
-) -> Server:
+async def create_mcp_server(mode: str = 'single', profile: str = '', config: str = '') -> Server:
     # Set the global profile if provided
     if profile:
         from opensearch.client import set_profile
@@ -26,7 +24,7 @@ async def create_mcp_server(
 
     # Load clusters from YAML file
     if mode == 'multi':
-        load_clusters_from_yaml(clusters_config)
+        load_clusters_from_yaml(config)
 
     server = Server('opensearch-mcp-server')
     # Call tool generator
@@ -96,9 +94,9 @@ async def serve(
     port: int = 9900,
     mode: str = 'single',
     profile: str = '',
-    clusters_config: str = '',
+    config: str = '',
 ) -> None:
-    mcp_server = await create_mcp_server(mode, profile, clusters_config)
+    mcp_server = await create_mcp_server(mode, profile, config)
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 

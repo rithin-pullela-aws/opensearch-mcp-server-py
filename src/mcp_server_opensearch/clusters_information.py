@@ -73,23 +73,36 @@ def load_clusters_from_yaml(file_path: str) -> None:
 
     Raises:
         FileNotFoundError: If the YAML file doesn't exist
+        PermissionError: If the file cannot be read due to permissions
         yaml.YAMLError: If the YAML file is malformed
+        UnicodeDecodeError: If the file has encoding issues
+        OSError: For other file system related errors
     """
     if not file_path:
         return
+
+    # Check if file exists
     if not os.path.exists(file_path):
         raise FileNotFoundError(f'YAML file not found: {file_path}')
 
     result = {'loaded_clusters': [], 'errors': [], 'total_clusters': 0}
 
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            config = yaml.safe_load(file)
+        # Try to open and read the file with proper error handling
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                config = yaml.safe_load(file)
+        except PermissionError as e:
+            raise PermissionError(f'Permission denied reading YAML file {file_path}: {str(e)}')
+        except UnicodeDecodeError as e:
+            raise UnicodeDecodeError(f'Encoding error reading YAML file {file_path}: {str(e)}')
+        except OSError as e:
+            raise OSError(f'OS error reading YAML file {file_path}: {str(e)}')
 
         # Process clusters
         clusters = config.get('clusters', {})
         result['total_clusters'] = len(clusters)
-        logging.info(f'total cluster found in config file: {result["total_clusters"]}')
+        logging.info(f'Total clusters found in config file: {result["total_clusters"]}')
 
         for cluster_name, cluster_config in clusters.items():
             try:

@@ -11,7 +11,7 @@ from tools.tool_generator import generate_tools_from_openapi
 
 
 # --- Server setup ---
-async def serve(mode: str = 'single', profile: str = '', clusters_config: str = '') -> None:
+async def serve(mode: str = 'single', profile: str = '', config: str = '') -> None:
     # Set the global profile if provided
     if profile:
         from opensearch.client import set_profile
@@ -21,7 +21,7 @@ async def serve(mode: str = 'single', profile: str = '', clusters_config: str = 
     server = Server('opensearch-mcp-server')
     # Load clusters from YAML file
     if mode == 'multi':
-        load_clusters_from_yaml(clusters_config)
+        load_clusters_from_yaml(config)
 
     # Call tool generator
     await generate_tools_from_openapi()
