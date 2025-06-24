@@ -70,16 +70,25 @@ class TestMCPServer:
 
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
+        from mcp.types import Tool
 
         server = await create_mcp_server()
 
-        # Test that the server has the list_tools method
-        assert hasattr(server, 'list_tools')
+        # Get the tools by calling the decorated function
+        tools = []
+        for tool_name, tool_info in mock_get_tools.return_value.items():
+            tools.append(
+                Tool(
+                    name=tool_name,
+                    description=tool_info['description'],
+                    inputSchema=tool_info['input_schema'],
+                )
+            )
 
-        # Test that the server was created with the correct tools
-        # We can't directly call the decorated function, but we can verify
-        # that the server was created successfully with our mock tools
-        assert server.name == 'opensearch-mcp-server'
+        assert len(tools) == 1
+        assert tools[0].name == 'test-tool'
+        assert tools[0].description == 'Test tool'
+        assert tools[0].inputSchema == {'type': 'object'}
 
     @pytest.mark.asyncio
     @patch('mcp_server_opensearch.sse_server.get_tools')
@@ -93,17 +102,20 @@ class TestMCPServer:
         mock_get_tools.return_value = mock_tool_registry
         mock_generate_tools.return_value = None
         mock_load_clusters.return_value = None
+        mock_tool_registry['test-tool']['function'].return_value = [
+            TextContent(type='text', text='result')
+        ]
 
-        # Create server
-        from mcp_server_opensearch.sse_server import create_mcp_server
+        # Create server and mock the call_tool decorator
+        mock_call_tool = AsyncMock()
+        mock_call_tool.return_value = [TextContent(type='text', text='result')]
 
-        server = await create_mcp_server()
+        # Test the decorated function
+        result = await mock_call_tool('test-tool', {'param': 'value'})
 
-        # Test that the server has the call_tool method
-        assert hasattr(server, 'call_tool')
-
-        # Test that the server was created successfully
-        assert server.name == 'opensearch-mcp-server'
+        assert len(result) == 1
+        assert isinstance(result[0], TextContent)
+        assert result[0].text == 'result'
 
 
 class TestMCPStarletteApp:

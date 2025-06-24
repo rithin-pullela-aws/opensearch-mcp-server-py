@@ -61,7 +61,7 @@ class TestToolGenerator:
         # Create a mock response
         mock_response = AsyncMock()
         mock_response.text = AsyncMock(return_value=yaml.dump(self.mock_spec))
-        mock_response.raise_for_status = Mock()  # Change to regular Mock since it's not awaited
+        mock_response.raise_for_status = Mock()
 
         # Create a mock for the get response context manager
         mock_get_context = AsyncMock()

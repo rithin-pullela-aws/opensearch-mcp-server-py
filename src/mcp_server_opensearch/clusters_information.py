@@ -3,48 +3,9 @@
 
 import logging
 import os
-import re
 import yaml
 from pydantic import BaseModel
 from typing import Dict, Optional
-
-
-def mask_sensitive_info(text: str) -> str:
-    """Mask sensitive information in text for logging purposes.
-    
-    Args:
-        text (str): Text that may contain sensitive information
-        
-    Returns:
-        str: Text with sensitive information masked
-    """
-    if not text:
-        return text
-    
-    # Mask OpenSearch URLs (keep domain name, mask the rest)
-    # Pattern: https://search-domain.region.es.amazonaws.com
-    text = re.sub(
-        r'(https?://)([^/]+)(\.es\.amazonaws\.com)',
-        r'\1***\3',
-        text
-    )
-    
-    # Mask IAM ARNs (keep account ID and role name, mask the rest)
-    # Pattern: arn:aws:iam::123456789012:role/RoleName
-    text = re.sub(
-        r'(arn:aws:iam::)(\d{12})(:role/)([^/\s]+)',
-        r'\1***\3***',
-        text
-    )
-    
-    # Mask localhost URLs (keep port if specified)
-    text = re.sub(
-        r'(http://localhost)(:\d+)?',
-        r'\1***',
-        text
-    )
-    
-    return text
 
 
 class ClusterInfo(BaseModel):
@@ -147,9 +108,8 @@ def load_clusters_from_yaml(file_path: str) -> None:
                 # Check if possible to connect to the cluster
                 is_connected, error_message = check_cluster_connection(cluster_info)
                 if not is_connected:
-                    masked_error = mask_sensitive_info(error_message)
                     result['errors'].append(
-                        f"Error connecting to cluster '{cluster_name}': {masked_error}"
+                        f"Error connecting to cluster '{cluster_name}': {error_message}"
                     )
                     continue
                 else:
@@ -159,8 +119,7 @@ def load_clusters_from_yaml(file_path: str) -> None:
                 result['loaded_clusters'].append(cluster_name)
 
             except Exception as e:
-                masked_error = mask_sensitive_info(str(e))
-                result['errors'].append(f"Error processing cluster '{cluster_name}': {masked_error}")
+                result['errors'].append(f"Error processing cluster '{cluster_name}': {str(e)}")
 
         result['loaded_clusters'] = list(cluster_registry.keys())
         if result['errors']:

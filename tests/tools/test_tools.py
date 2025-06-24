@@ -49,8 +49,6 @@ class TestTools:
         self._search_index_tool = search_index_tool
         self._get_shards_tool = get_shards_tool
 
-        self.test_url = 'https://test-opensearch-domain.com'
-
     def teardown_method(self):
         self.init_client_patcher.stop()
 
@@ -60,7 +58,7 @@ class TestTools:
         # Setup
         self.mock_client.cat.indices.return_value = [{'index': 'index1'}, {'index': 'index2'}]
         # Execute
-        result = await self._list_indices_tool(self.ListIndicesArgs(opensearch_url=self.test_url))
+        result = await self._list_indices_tool(self.ListIndicesArgs())
         # Assert
         assert len(result) == 1
         assert result[0]['type'] == 'text'
@@ -73,7 +71,7 @@ class TestTools:
         # Setup
         self.mock_client.cat.indices.side_effect = Exception('Test error')
         # Execute
-        result = await self._list_indices_tool(self.ListIndicesArgs(opensearch_url=self.test_url))
+        result = await self._list_indices_tool(self.ListIndicesArgs())
         # Assert
         assert len(result) == 1
         assert result[0]['type'] == 'text'
@@ -87,7 +85,7 @@ class TestTools:
         mock_mapping = {'mappings': {'properties': {'field1': {'type': 'text'}}}}
         self.mock_client.indices.get_mapping.return_value = mock_mapping
         # Execute
-        args = self.GetIndexMappingArgs(opensearch_url=self.test_url, index='test-index')
+        args = self.GetIndexMappingArgs(index='test-index')
         result = await self._get_index_mapping_tool(args)
         # Assert
         assert len(result) == 1
@@ -102,7 +100,7 @@ class TestTools:
         # Setup
         self.mock_client.indices.get_mapping.side_effect = Exception('Test error')
         # Execute
-        args = self.GetIndexMappingArgs(opensearch_url=self.test_url, index='test-index')
+        args = self.GetIndexMappingArgs(index='test-index')
         result = await self._get_index_mapping_tool(args)
         # Assert
         assert len(result) == 1
@@ -117,9 +115,7 @@ class TestTools:
         mock_results = {'hits': {'total': {'value': 1}, 'hits': [{'_source': {'field': 'value'}}]}}
         self.mock_client.search.return_value = mock_results
         # Execute
-        args = self.SearchIndexArgs(
-            opensearch_url=self.test_url, index='test-index', query={'match_all': {}}
-        )
+        args = self.SearchIndexArgs(index='test-index', query={'match_all': {}})
         result = await self._search_index_tool(args)
         # Assert
         assert len(result) == 1
@@ -134,9 +130,7 @@ class TestTools:
         # Setup
         self.mock_client.search.side_effect = Exception('Test error')
         # Execute
-        args = self.SearchIndexArgs(
-            opensearch_url=self.test_url, index='test-index', query={'match_all': {}}
-        )
+        args = self.SearchIndexArgs(index='test-index', query={'match_all': {}})
         result = await self._search_index_tool(args)
         # Assert
         assert len(result) == 1
@@ -162,7 +156,7 @@ class TestTools:
         ]
         self.mock_client.cat.shards.return_value = mock_shards
         # Execute
-        args = self.GetShardsArgs(opensearch_url=self.test_url, index='test-index')
+        args = self.GetShardsArgs(index='test-index')
         result = await self._get_shards_tool(args)
         # Assert
         assert len(result) == 1
@@ -177,7 +171,7 @@ class TestTools:
         # Setup
         self.mock_client.cat.shards.side_effect = Exception('Test error')
         # Execute
-        args = self.GetShardsArgs(opensearch_url=self.test_url, index='test-index')
+        args = self.GetShardsArgs(index='test-index')
         result = await self._get_shards_tool(args)
         # Assert
         assert len(result) == 1
@@ -186,14 +180,26 @@ class TestTools:
         self.mock_client.cat.shards.assert_called_once_with(index='test-index', format='json')
 
     def test_tool_registry(self):
-        assert 'ListIndexTool' in self.TOOL_REGISTRY
-        assert 'IndexMappingTool' in self.TOOL_REGISTRY
-        assert 'SearchIndexTool' in self.TOOL_REGISTRY
-        assert 'GetShardsTool' in self.TOOL_REGISTRY
+        """Test TOOL_REGISTRY structure"""
+        expected_tools = ['ListIndexTool', 'IndexMappingTool', 'SearchIndexTool', 'GetShardsTool']
+
+        for tool in expected_tools:
+            assert tool in self.TOOL_REGISTRY
+            assert 'description' in self.TOOL_REGISTRY[tool]
+            assert 'input_schema' in self.TOOL_REGISTRY[tool]
+            assert 'function' in self.TOOL_REGISTRY[tool]
+            assert 'args_model' in self.TOOL_REGISTRY[tool]
 
     def test_input_models(self):
-        # Just check that the input models can be instantiated
-        self.ListIndicesArgs(opensearch_url=self.test_url)
-        self.GetIndexMappingArgs(opensearch_url=self.test_url, index='foo')
-        self.SearchIndexArgs(opensearch_url=self.test_url, index='foo', query={})
-        self.GetShardsArgs(opensearch_url=self.test_url, index='foo')
+        """Test input models validation"""
+        with pytest.raises(ValueError):
+            self.GetIndexMappingArgs()  # Should fail without index
+
+        with pytest.raises(ValueError):
+            self.SearchIndexArgs(index='test')  # Should fail without query
+
+        # Test valid inputs
+        assert self.GetIndexMappingArgs(index='test').index == 'test'
+        assert self.SearchIndexArgs(index='test', query={'match': {}}).index == 'test'
+        assert self.GetShardsArgs(index='test').index == 'test'
+        assert isinstance(self.ListIndicesArgs(), self.ListIndicesArgs)
