@@ -1,34 +1,37 @@
 # Copyright OpenSearch Contributors
 # SPDX-License-Identifier: Apache-2.0
 
-from opensearchpy import OpenSearch, RequestsHttpConnection
-from urllib.parse import urlparse
-from requests_aws4auth import AWS4Auth
-import os
 import boto3
 import logging
-from typing import Dict, Any, Optional
-from common.tool_params import baseToolArgs
-from common.cluster_information import get_cluster
+import os
+from mcp_server_opensearch.cluster_information import ClusterInfo, get_cluster
+from opensearchpy import OpenSearch, RequestsHttpConnection
+from requests_aws4auth import AWS4Auth
+from tools.tool_params import baseToolArgs
+from typing import Any, Dict
+from urllib.parse import urlparse
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Constants
-OPENSEARCH_SERVICE = "es"
-OPENSEARCH_SERVERLESS_SERVICE = "aoss"
+OPENSEARCH_SERVICE = 'es'
+OPENSEARCH_SERVERLESS_SERVICE = 'aoss'
 
 # global profile variable from command line
 arg_profile = None
+
 
 def set_profile(profile: str) -> None:
     global arg_profile
     arg_profile = profile
 
-def initialize_client_with_cluster(cluster_info: Optional[Any] = None) -> OpenSearch:
-    """
-    Initialize and return an OpenSearch client with appropriate authentication.
-    
+
+def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSearch:
+    """Initialize and return an OpenSearch client with appropriate authentication.
+
     The function attempts to authenticate in the following order:
     1. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
     2. AWS IAM authentication using boto3 credentials
@@ -36,32 +39,40 @@ def initialize_client_with_cluster(cluster_info: Optional[Any] = None) -> OpenSe
        - Uses 'es' service name otherwise
 
     Args:
-        cluster_info (Optional[Any]): Cluster information object containing authentication and connection details
-    
+        cluster_info (ClusterInfo): Cluster information object containing authentication and connection details
+
     Returns:
         OpenSearch: An initialized OpenSearch client instance.
-    
+
     Raises:
         ValueError: If opensearch_url is empty or invalid
         RuntimeError: If no valid authentication method is available
     """
-    opensearch_url = cluster_info.opensearch_url if cluster_info else os.getenv("OPENSEARCH_URL", "")
+    opensearch_url = (
+        cluster_info.opensearch_url if cluster_info else os.getenv('OPENSEARCH_URL', '')
+    )
     if not opensearch_url:
-        raise ValueError("OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable")
-    opensearch_username = cluster_info.opensearch_username if cluster_info else os.getenv("OPENSEARCH_USERNAME", "")
-    opensearch_password = cluster_info.opensearch_password if cluster_info else os.getenv("OPENSEARCH_PASSWORD", "")
-    aws_region = cluster_info.aws_region if cluster_info else ""
-    iam_arn = cluster_info.iam_arn if cluster_info else os.getenv("AWS_IAM_ARN", "")
+        raise ValueError(
+            'OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable'
+        )
+    opensearch_username = (
+        cluster_info.opensearch_username if cluster_info else os.getenv('OPENSEARCH_USERNAME', '')
+    )
+    opensearch_password = (
+        cluster_info.opensearch_password if cluster_info else os.getenv('OPENSEARCH_PASSWORD', '')
+    )
+    aws_region = cluster_info.aws_region if cluster_info else ''
+    iam_arn = cluster_info.iam_arn if cluster_info else os.getenv('AWS_IAM_ARN', '')
     profile = cluster_info.profile if cluster_info else arg_profile
     if not profile:
-        profile = os.getenv("AWS_PROFILE", "")
-    
+        profile = os.getenv('AWS_PROFILE', '')
+
     # Check if using OpenSearch Serverless
-    is_serverless = os.getenv("AWS_OPENSEARCH_SERVERLESS", "").lower() == "true"
+    is_serverless = os.getenv('AWS_OPENSEARCH_SERVERLESS', '').lower() == 'true'
     service_name = OPENSEARCH_SERVERLESS_SERVICE if is_serverless else OPENSEARCH_SERVICE
-    
+
     if is_serverless:
-        logger.info("Using OpenSearch Serverless with service name: aoss")
+        logger.info('Using OpenSearch Serverless with service name: aoss')
 
     # Parse the OpenSearch domain URL
     parsed_url = urlparse(opensearch_url)
@@ -69,40 +80,41 @@ def initialize_client_with_cluster(cluster_info: Optional[Any] = None) -> OpenSe
     # Common client configuration
     client_kwargs: Dict[str, Any] = {
         'hosts': [opensearch_url],
-        'use_ssl': (parsed_url.scheme == "https"),
+        'use_ssl': (parsed_url.scheme == 'https'),
         'verify_certs': True,
         'connection_class': RequestsHttpConnection,
     }
 
     session = boto3.Session(profile_name=profile) if profile else boto3.Session()
     if not aws_region:
-        aws_region = session.region_name or os.getenv("AWS_REGION", "")
+        aws_region = session.region_name or os.getenv('AWS_REGION', '')
 
     # 1. Try IAM auth
     if iam_arn:
         try:
             if not aws_region:
-                raise RuntimeError("AWS region not found, please specify region using `aws configure`")
-            
+                raise RuntimeError(
+                    'AWS region not found, please specify region using `aws configure`'
+                )
+
             sts_client = session.client('sts', region_name=aws_region)
             assumed_role = sts_client.assume_role(
-                RoleArn=iam_arn,
-                RoleSessionName='OpenSearchClientSession'
+                RoleArn=iam_arn, RoleSessionName='OpenSearchClientSession'
             )
             credentials = assumed_role['Credentials']
-            
+
             aws_auth = AWS4Auth(
                 credentials['AccessKeyId'],
                 credentials['SecretAccessKey'],
                 aws_region,
                 service_name,
-                session_token=credentials['SessionToken']
+                session_token=credentials['SessionToken'],
             )
             client_kwargs['http_auth'] = aws_auth
-            logger.info(f"Successfully assumed IAM role: {iam_arn}")
+            logger.info(f'Successfully assumed IAM role: {iam_arn}')
             return OpenSearch(**client_kwargs)
         except Exception as e:
-            logger.error(f"Failed to assume IAM role {iam_arn}: {str(e)}")
+            logger.error(f'Failed to assume IAM role {iam_arn}: {str(e)}')
 
     # 2. Try basic auth
     if opensearch_username and opensearch_password:
@@ -113,7 +125,7 @@ def initialize_client_with_cluster(cluster_info: Optional[Any] = None) -> OpenSe
     try:
         credentials = session.get_credentials()
         if not aws_region:
-            raise RuntimeError("AWS region not found, please specify region using `aws configure`")
+            raise RuntimeError('AWS region not found, please specify region using `aws configure`')
         if credentials:
             aws_auth = AWS4Auth(
                 refreshable_credentials=credentials,
@@ -123,24 +135,23 @@ def initialize_client_with_cluster(cluster_info: Optional[Any] = None) -> OpenSe
             client_kwargs['http_auth'] = aws_auth
             return OpenSearch(**client_kwargs)
     except (boto3.exceptions.Boto3Error, Exception) as e:
-        logger.error(f"Failed to get AWS credentials: {str(e)}")
+        logger.error(f'Failed to get AWS credentials: {str(e)}')
 
-    raise RuntimeError("No valid AWS or basic authentication provided for OpenSearch")
+    raise RuntimeError('No valid AWS or basic authentication provided for OpenSearch')
 
-# This file should expose the OpenSearch py client
+
 def initialize_client(args: baseToolArgs) -> OpenSearch:
-    """
-    Initialize and return an OpenSearch client with appropriate authentication.
-    
+    """Initialize and return an OpenSearch client with appropriate authentication.
+
     This function gets cluster information from the provided arguments and then
     initializes the OpenSearch client using that information.
 
     Args:
         args (baseToolArgs): The arguments object containing authentication and connection details
-    
+
     Returns:
         OpenSearch: An initialized OpenSearch client instance.
-    
+
     Raises:
         ValueError: If opensearch_url is empty or invalid
         RuntimeError: If no valid authentication method is available

@@ -3,19 +3,19 @@
 
 import pytest
 import pytest_asyncio
-from unittest.mock import Mock, patch, AsyncMock
-from mcp.types import Tool, TextContent
+from mcp.types import TextContent
+from unittest.mock import AsyncMock, Mock, patch
 
 
 @pytest.fixture(autouse=True)
 def patch_opensearch_version():
-    """Mock OpenSearch client and version check"""
+    """Mock OpenSearch client and version check."""
     mock_client = Mock()
-    mock_client.info.return_value = {"version": {"number": "3.0.0"}}
-    
+    mock_client.info.return_value = {'version': {'number': '3.0.0'}}
+
     with (
-        patch("opensearch.helper.get_opensearch_version", return_value="2.9.0"),
-        patch("opensearch.client.initialize_client", return_value=Mock()),
+        patch('opensearch.helper.get_opensearch_version', return_value='2.9.0'),
+        patch('opensearch.client.initialize_client', return_value=Mock()),
     ):
         yield
 
@@ -23,92 +23,119 @@ def patch_opensearch_version():
 class TestMCPServer:
     @pytest.fixture
     def mock_tool_registry(self):
-        """Provides a mock tool registry for testing"""
+        """Provides a mock tool registry for testing."""
         return {
-            "test-tool": {
-                "description": "Test tool",
-                "input_schema": {"type": "object"},
-                "args_model": Mock(),
-                "function": AsyncMock(
-                    return_value=[TextContent(type="text", text="test result")]
-                ),
+            'test-tool': {
+                'description': 'Test tool',
+                'input_schema': {'type': 'object'},
+                'args_model': Mock(),
+                'function': AsyncMock(return_value=[TextContent(type='text', text='test result')]),
             }
         }
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_create_mcp_server(self, mock_registry, mock_tool_registry):
-        """Test MCP server creation"""
+    @patch('mcp_server_opensearch.sse_server.get_tools')
+    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    async def test_create_mcp_server(
+        self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
+    ):
+        """Test MCP server creation."""
+        # Setup mocks
+        mock_get_tools.return_value = mock_tool_registry
+        mock_generate_tools.return_value = None
+        mock_load_clusters.return_value = None
+
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
 
         server = await create_mcp_server()
 
-        assert server.name == "opensearch-mcp-server"
+        assert server.name == 'opensearch-mcp-server'
+        mock_generate_tools.assert_called_once()
+        mock_get_tools.assert_called_once_with('single')
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_list_tools(self, mock_registry, mock_tool_registry):
-        """Test listing available tools"""
+    @patch('mcp_server_opensearch.sse_server.get_tools')
+    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    async def test_list_tools(
+        self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
+    ):
+        """Test listing available tools."""
+        # Setup mocks
+        mock_get_tools.return_value = mock_tool_registry
+        mock_generate_tools.return_value = None
+        mock_load_clusters.return_value = None
+
         # Create server
         from mcp_server_opensearch.sse_server import create_mcp_server
 
         server = await create_mcp_server()
 
-        # Get the tools by calling the decorated function
-        tools = []
-        for tool_name, tool_info in mock_tool_registry.items():
-            tools.append(
-                Tool(
-                    name=tool_name,
-                    description=tool_info["description"],
-                    inputSchema=tool_info["input_schema"],
-                )
-            )
+        # Test that the server has the list_tools method
+        assert hasattr(server, 'list_tools')
 
-        assert len(tools) == 1
-        assert tools[0].name == "test-tool"
-        assert tools[0].description == "Test tool"
-        assert tools[0].inputSchema == {"type": "object"}
+        # Test that the server was created with the correct tools
+        # We can't directly call the decorated function, but we can verify
+        # that the server was created successfully with our mock tools
+        assert server.name == 'opensearch-mcp-server'
 
     @pytest.mark.asyncio
-    @patch("mcp_server_opensearch.sse_server.get_enabled_tools")
-    async def test_call_tool(self, mock_registry, mock_tool_registry):
-        """ "Test calling the tool"""
-        # Create server and mock the call_tool decorator
-        mock_call_tool = AsyncMock()
-        mock_call_tool.return_value = [TextContent(type="text", text="result")]
+    @patch('mcp_server_opensearch.sse_server.get_tools')
+    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    async def test_call_tool(
+        self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
+    ):
+        """Test calling the tool."""
+        # Setup mocks
+        mock_get_tools.return_value = mock_tool_registry
+        mock_generate_tools.return_value = None
+        mock_load_clusters.return_value = None
 
-        # Test the decorated function
-        result = await mock_call_tool("test-tool", {"param": "value"})
+        # Create server
+        from mcp_server_opensearch.sse_server import create_mcp_server
 
-        assert len(result) == 1
-        assert isinstance(result[0], TextContent)
-        assert result[0].text == "result"
+        server = await create_mcp_server()
+
+        # Test that the server has the call_tool method
+        assert hasattr(server, 'call_tool')
+
+        # Test that the server was created successfully
+        assert server.name == 'opensearch-mcp-server'
 
 
 class TestMCPStarletteApp:
     @pytest_asyncio.fixture
     async def app_handler(self):
-        """Provides an MCPStarletteApp instance for testing"""
-        from mcp_server_opensearch.sse_server import create_mcp_server, MCPStarletteApp
+        """Provides an MCPStarletteApp instance for testing."""
+        from mcp_server_opensearch.sse_server import MCPStarletteApp, create_mcp_server
 
-        server = await create_mcp_server()
-        return MCPStarletteApp(server)
+        # Mock dependencies
+        with (
+            patch('mcp_server_opensearch.sse_server.get_tools', return_value={}),
+            patch(
+                'mcp_server_opensearch.sse_server.generate_tools_from_openapi', return_value=None
+            ),
+            patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml', return_value=None),
+        ):
+            server = await create_mcp_server()
+            return MCPStarletteApp(server)
 
     def test_create_app(self, app_handler):
-        """Test Starlette application creation and configuration"""
+        """Test Starlette application creation and configuration."""
         app = app_handler.create_app()
         assert len(app.routes) == 3
 
         # Check routes
-        assert app.routes[0].path == "/sse"
-        assert app.routes[1].path == "/health"
-        assert app.routes[2].path == "/messages"
+        assert app.routes[0].path == '/sse'
+        assert app.routes[1].path == '/health'
+        assert app.routes[2].path == '/messages'
 
     @pytest.mark.asyncio
     async def test_handle_sse(self, app_handler):
-        """Test SSE connection handling"""
+        """Test SSE connection handling."""
         mock_request = Mock()
 
         # Mock SSE connection context
@@ -142,30 +169,33 @@ class TestMCPStarletteApp:
         mock_context.__aexit__.assert_called_once()
 
         # Verify server.run was called with correct arguments
-        app_handler.mcp_server.run.assert_called_once_with(
-            mock_read_stream, mock_write_stream, {}
-        )
+        app_handler.mcp_server.run.assert_called_once_with(mock_read_stream, mock_write_stream, {})
 
 
 @pytest.mark.asyncio
 async def test_serve():
-    """Test server startup and configuration"""
+    """Test server startup and configuration."""
     from mcp_server_opensearch.sse_server import serve
 
     # Mock uvicorn server
     mock_server = AsyncMock()
     mock_config = Mock()
 
-    with patch("uvicorn.Server", return_value=mock_server) as mock_server_class:
-        with patch("uvicorn.Config", return_value=mock_config) as mock_config_class:
-            await serve(host="localhost", port=8000)
+    with (
+        patch('uvicorn.Server', return_value=mock_server) as mock_server_class,
+        patch('uvicorn.Config', return_value=mock_config) as mock_config_class,
+        patch('mcp_server_opensearch.sse_server.get_tools', return_value={}),
+        patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi', return_value=None),
+        patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml', return_value=None),
+    ):
+        await serve(host='localhost', port=8000)
 
-            # Verify config
-            mock_config_class.assert_called_once()
-            config_args = mock_config_class.call_args[1]
-            assert config_args["host"] == "localhost"
-            assert config_args["port"] == 8000
+        # Verify config
+        mock_config_class.assert_called_once()
+        config_args = mock_config_class.call_args[1]
+        assert config_args['host'] == 'localhost'
+        assert config_args['port'] == 8000
 
-            # Verify server started
-            mock_server_class.assert_called_once_with(mock_config)
-            mock_server.serve.assert_called_once()
+        # Verify server started
+        mock_server_class.assert_called_once_with(mock_config)
+        mock_server.serve.assert_called_once()

@@ -3,32 +3,35 @@
 
 import logging
 import uvicorn
+from mcp.server import Server
+from mcp.server.sse import SseServerTransport
+from mcp.types import TextContent, Tool
+from mcp_server_opensearch.cluster_information import load_clusters_from_yaml
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.routing import Mount, Route
 from starlette.responses import Response
-from mcp.server.sse import SseServerTransport
-from mcp.server import Server
-from mcp.types import TextContent, Tool
+from starlette.routing import Mount, Route
+from tools.tool_filter import get_tools
 from tools.tool_generator import generate_tools_from_openapi
-from common.tool_filter import get_tools
-from opensearch.client import set_profile
-from common.cluster_information import load_clusters_from_yaml
-import logging
 
-async def create_mcp_server(mode: str = "single", profile: str = "", clusters_config: str = "") -> Server:
+
+async def create_mcp_server(
+    mode: str = 'single', profile: str = '', clusters_config: str = ''
+) -> Server:
     # Set the global profile if provided
     if profile:
+        from opensearch.client import set_profile
+
         set_profile(profile)
-    
+
     # Load clusters from YAML file
     load_clusters_from_yaml(clusters_config)
 
-    server = Server("opensearch-mcp-server")
+    server = Server('opensearch-mcp-server')
     # Call tool generator
     await generate_tools_from_openapi()
     enabled_tools = get_tools(mode)
-    logging.info(f"Enabled tools: {list(enabled_tools.keys())}")
+    logging.info(f'Enabled tools: {list(enabled_tools.keys())}')
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
@@ -37,8 +40,8 @@ async def create_mcp_server(mode: str = "single", profile: str = "", clusters_co
             tools.append(
                 Tool(
                     name=tool_name,
-                    description=tool_info["description"],
-                    inputSchema=tool_info["input_schema"],
+                    description=tool_info['description'],
+                    inputSchema=tool_info['input_schema'],
                 )
             )
         return tools
@@ -47,9 +50,9 @@ async def create_mcp_server(mode: str = "single", profile: str = "", clusters_co
     async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         tool = enabled_tools.get(name)
         if not tool:
-            raise ValueError(f"Unknown or disabled tool: {name}")
-        parsed = tool["args_model"](**arguments)
-        return await tool["function"](parsed)
+            raise ValueError(f'Unknown or disabled tool: {name}')
+        parsed = tool['args_model'](**arguments)
+        return await tool['function'](parsed)
 
     return server
 
@@ -57,7 +60,7 @@ async def create_mcp_server(mode: str = "single", profile: str = "", clusters_co
 class MCPStarletteApp:
     def __init__(self, mcp_server: Server):
         self.mcp_server = mcp_server
-        self.sse = SseServerTransport("/messages/")
+        self.sse = SseServerTransport('/messages/')
 
     async def handle_sse(self, request: Request) -> None:
         async with self.sse.connect_sse(
@@ -75,18 +78,25 @@ class MCPStarletteApp:
         return Response()
 
     async def handle_health(self, request: Request) -> Response:
-        return Response("OK", status_code=200)
+        return Response('OK', status_code=200)
 
     def create_app(self) -> Starlette:
         return Starlette(
             routes=[
-                Route("/sse", endpoint=self.handle_sse, methods=["GET"]),
-                Route("/health", endpoint=self.handle_health, methods=["GET"]),
-                Mount("/messages/", app=self.sse.handle_post_message),
+                Route('/sse', endpoint=self.handle_sse, methods=['GET']),
+                Route('/health', endpoint=self.handle_health, methods=['GET']),
+                Mount('/messages/', app=self.sse.handle_post_message),
             ]
         )
 
-async def serve(host: str = "0.0.0.0", port: int = 9900, mode: str = "single", profile: str = "", clusters_config: str = "") -> None:
+
+async def serve(
+    host: str = '0.0.0.0',
+    port: int = 9900,
+    mode: str = 'single',
+    profile: str = '',
+    clusters_config: str = '',
+) -> None:
     mcp_server = await create_mcp_server(mode, profile, clusters_config)
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()

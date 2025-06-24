@@ -4,6 +4,7 @@
 from .stdio_server import serve as serve_stdio
 from .sse_server import serve as serve_sse
 
+
 def main() -> None:
     """
     Main entry point for the OpenSearch MCP Server.
@@ -15,44 +16,33 @@ def main() -> None:
     # Set up command line argument parser
     parser = argparse.ArgumentParser(description='OpenSearch MCP Server')
     parser.add_argument(
-        '--transport', 
-        choices=['stdio', 'sse'], 
+        '--transport',
+        choices=['stdio', 'sse'],
         default='stdio',
-        help='Transport type (stdio or sse)'
+        help='Transport type (stdio or sse)',
     )
-    parser.add_argument(
-        '--host', 
-        default='0.0.0.0', 
-        help='Host to bind to (SSE only)'
-    )
-    parser.add_argument(
-        '--port', 
-        type=int, 
-        default=9900, 
-        help='Port to listen on (SSE only)'
-    )
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (SSE only)')
+    parser.add_argument('--port', type=int, default=9900, help='Port to listen on (SSE only)')
     parser.add_argument(
         '--mode',
         choices=['single', 'multi'],
         default='single',
-        help='Server mode: single (default) uses environment variables for OpenSearch connection, multi requires explicit connection parameters'
+        help='Server mode: single (default) uses environment variables for OpenSearch connection, multi requires explicit connection parameters',
     )
     parser.add_argument(
-        '--profile',
-        default='',
-        help='AWS profile to use for OpenSearch connection'
+        '--profile', default='', help='AWS profile to use for OpenSearch connection'
     )
     parser.add_argument(
-        '--clusters_config',
-        default='',
-        help='YAML file containing cluster information'
+        '--clusters_config', default='', help='YAML file containing cluster information'
     )
 
     args = parser.parse_args()
 
     # Start the appropriate server based on transport type
     if args.transport == 'stdio':
-        asyncio.run(serve_stdio(mode=args.mode, profile=args.profile, clusters_config=args.clusters_config))
+        asyncio.run(
+            serve_stdio(mode=args.mode, profile=args.profile, clusters_config=args.clusters_config)
+        )
     else:
         asyncio.run(
             serve_sse(
@@ -60,9 +50,10 @@ def main() -> None:
                 port=args.port,
                 mode=args.mode,
                 profile=args.profile,
-                clusters_config=args.clusters_config
+                clusters_config=args.clusters_config,
             )
         )
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()
