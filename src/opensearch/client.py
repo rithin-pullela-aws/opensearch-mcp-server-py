@@ -4,7 +4,7 @@
 import boto3
 import logging
 import os
-from mcp_server_opensearch.cluster_information import ClusterInfo, get_cluster
+from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from tools.tool_params import baseToolArgs
@@ -53,7 +53,7 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     )
     if not opensearch_url:
         raise ValueError(
-            'OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable'
+            'OpenSearch URL must be provided using config file or OPENSEARCH_URL environment variable'
         )
     opensearch_username = (
         cluster_info.opensearch_username if cluster_info else os.getenv('OPENSEARCH_USERNAME', '')

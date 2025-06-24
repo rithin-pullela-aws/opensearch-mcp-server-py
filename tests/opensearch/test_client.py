@@ -34,7 +34,7 @@ class TestOpenSearchClient:
 
         assert (
             str(exc_info.value)
-            == 'OpenSearch URL must be provided either via command line argument or OPENSEARCH_URL environment variable'
+            == 'OpenSearch URL must be provided using config file or OPENSEARCH_URL environment variable'
         )
 
     @patch('opensearch.client.OpenSearch')

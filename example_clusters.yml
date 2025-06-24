@@ -3,55 +3,32 @@ description: "OpenSearch cluster configurations"
 
 
 clusters:
-  # production-cluster:
-  #   opensearch_url: "https://search-production.us-east-1.es.amazonaws.com"
-  #   iam_arn: "arn:aws:iam::123456789012:role/OpenSearchRole"
-  #   aws_region: "us-east-1"
-  
-  # staging-cluster:
-  #   opensearch_url: "https://search-staging.us-west-2.es.amazonaws.com"
-  #   iam_arn: "arn:aws:iam::123456789012:role/OpenSearchStagingRole"
-  #   aws_region: "us-west-2"
-  #   # No username/password - using IAM authentication only
-  
-  # development-cluster:
-  #   opensearch_url: "https://search-dev.eu-west-1.es.amazonaws.com"
-  #   aws_region: "eu-west-1"
-  #   opensearch_username: "dev_user"
-  #   opensearch_password: "dev_password"
-  #   # No IAM ARN - using username/password authentication only
-  
   local-cluster:
     opensearch_url: "http://localhost:9200"
     opensearch_username: "admin"
-    opensearch_password: "MyPassword123!"
-    # Local development cluster with no AWS configuration 
+    opensearch_password: "your_password_here"
 
   remote-cluster:
-    opensearch_url: "https://search-rithin-test-a2jcswobchosmgqwnhgokwqz6i.us-east-2.es.amazonaws.com"
-    profile: "dev-rc"
+    opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
+    profile: "your-aws-profile"
+  
+  remote-cluster-with-iam:
+    opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
+    iam_arn: "arn:aws:iam::123456789012:role/YourOpenSearchRole"
+    aws_region: "us-east-2"
+    profile: "your-aws-profile"
 
 
-# Hey You have acces to 2 clustgers
-# cluster info: 
-# production-cluster
-# staging-cluster
-
-# Tool call:
-# - index name
-# - query
-# - cluster name: production-cluster
-
-
-# {
-#  openserver{
-
-#  }
-
-# }
-
-# URL, IAM ARN, Region
-
-# URL, basic auth
-
-# URL, profile
+# Example configurations for different authentication methods:
+# 
+# 1. IAM Role Authentication (recommended for production):
+#    - Requires: opensearch_url, iam_arn, aws_region, profile
+#    - Uses AWS IAM roles for authentication
+#
+# 2. Basic Authentication:
+#    - Requires: opensearch_url, opensearch_username, opensearch_password
+#    - Uses username/password for authentication
+#
+# 3. AWS Profile Authentication:
+#    - Requires: opensearch_url, profile
+#    - Uses AWS credentials from the specified profile

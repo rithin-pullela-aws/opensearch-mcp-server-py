@@ -6,7 +6,7 @@ import uvicorn
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
-from mcp_server_opensearch.cluster_information import load_clusters_from_yaml
+from mcp_server_opensearch.clusters_information import load_clusters_from_yaml
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import Response
@@ -25,7 +25,8 @@ async def create_mcp_server(
         set_profile(profile)
 
     # Load clusters from YAML file
-    load_clusters_from_yaml(clusters_config)
+    if mode == 'multi':
+        load_clusters_from_yaml(clusters_config)
 
     server = Server('opensearch-mcp-server')
     # Call tool generator
