@@ -100,8 +100,8 @@ Create an MCP configuration file for your AI agent to connect to your developmen
             ],
             "env": {
                 "OPENSEARCH_URL": "<your_opensearch_domain_url>",
-                "OPENSEARCH_USERNAME": "<your_username>",
-                "OPENSEARCH_PASSWORD": "<your_password>"
+                "OPENSEARCH_USERNAME": "<your_opensearch_domain_username>",
+                "OPENSEARCH_PASSWORD": "<your_opensearch_domain_password>"
             }
         }
     }
