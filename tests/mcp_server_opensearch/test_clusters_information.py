@@ -2,6 +2,7 @@ import pytest
 import tempfile
 import os
 import yaml
+import platform
 from unittest.mock import patch, MagicMock
 from mcp_server_opensearch.clusters_information import (
     ClusterInfo,
@@ -206,6 +207,10 @@ clusters:
 
     def test_load_clusters_from_yaml_permission_error(self):
         """Test loading from file with permission error."""
+        # Skip this test on Windows as os.chmod with 0o000 doesn't work reliably
+        if platform.system() == 'Windows':
+            pytest.skip("Permission test not reliable on Windows")
+            
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
             f.write('clusters: {}')
             f.flush()
