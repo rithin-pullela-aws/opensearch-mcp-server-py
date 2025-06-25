@@ -124,8 +124,6 @@ clusters:
 - **Authentication**: Each cluster can use different authentication methods (basic auth, IAM roles, AWS profiles)
 - **Tool Usage**: When using tools, you must specify which cluster to use: `{"opensearch_cluster_name": "production", "index": "users"}`
 
-See [Authentication](#authentication) sections for detailed setup instructions.
-
 That's it! You are now ready to use your AI agent with OpenSearch tools.
 
 **Next Steps:**

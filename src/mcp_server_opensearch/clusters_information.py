@@ -47,24 +47,6 @@ def get_cluster(name: str) -> Optional[ClusterInfo]:
     return cluster_registry.get(name)
 
 
-def list_clusters() -> list[str]:
-    """Get list of all registered cluster names.
-
-    Returns:
-        list[str]: List of cluster names
-    """
-    return list(cluster_registry.keys())
-
-
-def get_all_clusters() -> Dict[str, ClusterInfo]:
-    """Get all cluster configurations.
-
-    Returns:
-        Dict[str, ClusterInfo]: Dictionary of cluster configurations
-    """
-    return cluster_registry
-
-
 def load_clusters_from_yaml(file_path: str) -> None:
     """Load cluster configurations from a YAML file and populate the global registry.
 
