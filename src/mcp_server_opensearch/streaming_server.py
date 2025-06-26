@@ -3,6 +3,8 @@
 
 import logging
 import uvicorn
+import contextlib
+from typing import AsyncIterator
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
@@ -13,6 +15,8 @@ from starlette.responses import Response
 from starlette.routing import Mount, Route
 from tools.tool_filter import get_tools
 from tools.tool_generator import generate_tools_from_openapi
+from starlette.types import Scope, Receive, Send
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 
 
 async def create_mcp_server(mode: str = 'single', profile: str = '', config: str = '') -> Server:
@@ -60,6 +64,12 @@ class MCPStarletteApp:
     def __init__(self, mcp_server: Server):
         self.mcp_server = mcp_server
         self.sse = SseServerTransport('/messages/')
+        self.session_manager = StreamableHTTPSessionManager(
+            app=self.mcp_server,
+            event_store=None,
+            json_response=False,
+            stateless=False,
+        )
 
     async def handle_sse(self, request: Request) -> None:
         async with self.sse.connect_sse(
@@ -79,13 +89,32 @@ class MCPStarletteApp:
     async def handle_health(self, request: Request) -> Response:
         return Response('OK', status_code=200)
 
+    @contextlib.asynccontextmanager
+    async def lifespan(self, app: Starlette) -> AsyncIterator[None]:
+        """
+        Context manager for session manager lifecycle.
+        Ensures proper startup and shutdown of the session manager.
+        """
+        async with self.session_manager.run():
+            logging.info('Application started with StreamableHTTP session manager!')
+            try:
+                yield
+            finally:
+                logging.info('Application shutting down...')
+
+    async def handle_streamable_http(self, scope: Scope, receive: Receive, send: Send) -> None:
+        """Handle streamable HTTP requests."""
+        await self.session_manager.handle_request(scope, receive, send)
+
     def create_app(self) -> Starlette:
         return Starlette(
             routes=[
                 Route('/sse', endpoint=self.handle_sse, methods=['GET']),
                 Route('/health', endpoint=self.handle_health, methods=['GET']),
                 Mount('/messages/', app=self.sse.handle_post_message),
-            ]
+                Mount('/mcp', app=self.handle_streamable_http),
+            ],
+            lifespan=self.lifespan,
         )
 
 

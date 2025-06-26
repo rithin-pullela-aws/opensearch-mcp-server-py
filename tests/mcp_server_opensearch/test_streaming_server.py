@@ -34,9 +34,9 @@ class TestMCPServer:
         }
 
     @pytest.mark.asyncio
-    @patch('mcp_server_opensearch.sse_server.get_tools')
-    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
-    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    @patch('mcp_server_opensearch.streaming_server.get_tools')
+    @patch('mcp_server_opensearch.streaming_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.streaming_server.load_clusters_from_yaml')
     async def test_create_mcp_server(
         self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
     ):
@@ -47,7 +47,7 @@ class TestMCPServer:
         mock_load_clusters.return_value = None
 
         # Create server
-        from mcp_server_opensearch.sse_server import create_mcp_server
+        from mcp_server_opensearch.streaming_server import create_mcp_server
 
         server = await create_mcp_server()
 
@@ -56,9 +56,9 @@ class TestMCPServer:
         mock_get_tools.assert_called_once_with('single', '')
 
     @pytest.mark.asyncio
-    @patch('mcp_server_opensearch.sse_server.get_tools')
-    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
-    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    @patch('mcp_server_opensearch.streaming_server.get_tools')
+    @patch('mcp_server_opensearch.streaming_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.streaming_server.load_clusters_from_yaml')
     async def test_list_tools(
         self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
     ):
@@ -69,7 +69,7 @@ class TestMCPServer:
         mock_load_clusters.return_value = None
 
         # Create server
-        from mcp_server_opensearch.sse_server import create_mcp_server
+        from mcp_server_opensearch.streaming_server import create_mcp_server
         from mcp.types import Tool
 
         server = await create_mcp_server()
@@ -91,9 +91,9 @@ class TestMCPServer:
         assert tools[0].inputSchema == {'type': 'object'}
 
     @pytest.mark.asyncio
-    @patch('mcp_server_opensearch.sse_server.get_tools')
-    @patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi')
-    @patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml')
+    @patch('mcp_server_opensearch.streaming_server.get_tools')
+    @patch('mcp_server_opensearch.streaming_server.generate_tools_from_openapi')
+    @patch('mcp_server_opensearch.streaming_server.load_clusters_from_yaml')
     async def test_call_tool(
         self, mock_load_clusters, mock_generate_tools, mock_get_tools, mock_tool_registry
     ):
@@ -122,15 +122,18 @@ class TestMCPStarletteApp:
     @pytest_asyncio.fixture
     async def app_handler(self):
         """Provides an MCPStarletteApp instance for testing."""
-        from mcp_server_opensearch.sse_server import MCPStarletteApp, create_mcp_server
+        from mcp_server_opensearch.streaming_server import MCPStarletteApp, create_mcp_server
 
         # Mock dependencies
         with (
-            patch('mcp_server_opensearch.sse_server.get_tools', return_value={}),
+            patch('mcp_server_opensearch.streaming_server.get_tools', return_value={}),
             patch(
-                'mcp_server_opensearch.sse_server.generate_tools_from_openapi', return_value=None
+                'mcp_server_opensearch.streaming_server.generate_tools_from_openapi',
+                return_value=None,
             ),
-            patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml', return_value=None),
+            patch(
+                'mcp_server_opensearch.streaming_server.load_clusters_from_yaml', return_value=None
+            ),
         ):
             server = await create_mcp_server()
             return MCPStarletteApp(server)
@@ -138,12 +141,13 @@ class TestMCPStarletteApp:
     def test_create_app(self, app_handler):
         """Test Starlette application creation and configuration."""
         app = app_handler.create_app()
-        assert len(app.routes) == 3
+        assert len(app.routes) == 4
 
         # Check routes
         assert app.routes[0].path == '/sse'
         assert app.routes[1].path == '/health'
         assert app.routes[2].path == '/messages'
+        assert app.routes[3].path == '/mcp'
 
     @pytest.mark.asyncio
     async def test_handle_sse(self, app_handler):
@@ -187,7 +191,7 @@ class TestMCPStarletteApp:
 @pytest.mark.asyncio
 async def test_serve():
     """Test server startup and configuration."""
-    from mcp_server_opensearch.sse_server import serve
+    from mcp_server_opensearch.streaming_server import serve
 
     # Mock uvicorn server
     mock_server = AsyncMock()
@@ -196,9 +200,11 @@ async def test_serve():
     with (
         patch('uvicorn.Server', return_value=mock_server) as mock_server_class,
         patch('uvicorn.Config', return_value=mock_config) as mock_config_class,
-        patch('mcp_server_opensearch.sse_server.get_tools', return_value={}),
-        patch('mcp_server_opensearch.sse_server.generate_tools_from_openapi', return_value=None),
-        patch('mcp_server_opensearch.sse_server.load_clusters_from_yaml', return_value=None),
+        patch('mcp_server_opensearch.streaming_server.get_tools', return_value={}),
+        patch(
+            'mcp_server_opensearch.streaming_server.generate_tools_from_openapi', return_value=None
+        ),
+        patch('mcp_server_opensearch.streaming_server.load_clusters_from_yaml', return_value=None),
     ):
         await serve(host='localhost', port=8000)
 

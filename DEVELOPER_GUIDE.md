@@ -56,8 +56,8 @@ cd src
 # Run stdio server (default)
 uv run python -m mcp_server_opensearch 
 
-# Run SSE server
-uv run python -m mcp_server_opensearch --transport sse
+# Run streaming server (SSE/HTTP streaming)
+uv run python -m mcp_server_opensearch --transport stream
 
 # Run with debug logging
 uv run python -m mcp_server_opensearch --log-level debug
@@ -73,8 +73,8 @@ cd src
 # Run stdio server in multi mode with custom config file
 uv run python -m mcp_server_opensearch --mode multi --config ../config/dev-clusters.yml
 
-# Run SSE server in multi mode with custom config file
-uv run python -m mcp_server_opensearch --mode multi --config ../config/dev-clusters.yml --transport sse
+# Run streaming server (SSE/HTTP streaming) in multi mode with custom config file
+uv run python -m mcp_server_opensearch --mode multi --config ../config/dev-clusters.yml --transport stream
 ```
 
 ## Development Configuration

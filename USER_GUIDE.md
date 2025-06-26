@@ -15,6 +15,11 @@
 ## Overview
 
 The OpenSearch MCP (Model Context Protocol) Server Python provides a bridge between AI agents and OpenSearch clusters. It supports both single-cluster and multi-cluster configurations with various authentication methods including IAM roles, basic authentication, and AWS credentials.
+The server can be started in both STDIO and streaming modes.
+
+### Streaming Server
+
+The OpenSearch MCP server supports a streaming transport that includes both SSE and HTTP streaming. The previous SSE server is now part of the streaming server and will be deprecated in the future. Use the streaming transport for all new integrations.
 
 ## Installation
 
@@ -295,8 +300,8 @@ python -m mcp_server_opensearch --mode multi --config clusters.yml
 # Stdio Server
 python -m mcp_server_opensearch
 
-# SSE Server
-python -m mcp_server_opensearch --transport sse
+# Streaming Server (SSE/HTTP streaming)
+python -m mcp_server_opensearch --transport stream
 
 # With AWS Profile
 python -m mcp_server_opensearch --profile my-aws-profile
@@ -307,8 +312,8 @@ python -m mcp_server_opensearch --profile my-aws-profile
 # Stdio Server with config file
 python -m mcp_server_opensearch --mode multi --config clusters.yml
 
-# SSE Server with config file
-python -m mcp_server_opensearch --mode multi --config clusters.yml --transport sse
+# Streaming Server with config file
+python -m mcp_server_opensearch --mode multi --config clusters.yml --transport stream
 
 # With AWS Profile (fallback if not in config)
 python -m mcp_server_opensearch --mode multi --config clusters.yml --profile my-aws-profile
@@ -350,8 +355,8 @@ To use your configuration file, start the server with the `--config` flag:
 # Run stdio server with tool filter config file
 python -m mcp_server_opensearch --config path/to/config.yml
 
-# Run SSE server with tool filter config file
-python -m mcp_server_opensearch --transport sse --config path/to/config.yml
+# Run Streaming server with tool filter config file
+python -m mcp_server_opensearch --transport stream --config path/to/config.yml
 ```
 
 2. Environment Variables
@@ -394,13 +399,13 @@ pip install langchain langchain-mcp-adapters langchain-openai
 export OPENAI_API_KEY="<your-openai-key>"
 ```
 
-3. Ensure OpenSearch MCP server is running in SSE mode:
+3. Ensure OpenSearch MCP server is running in streaming mode:
 ```bash
 # Single Mode
-python -m mcp_server_opensearch --transport sse
+python -m mcp_server_opensearch --transport stream
 
 # Multi Mode
-python -m mcp_server_opensearch --mode multi --config clusters.yml --transport sse
+python -m mcp_server_opensearch --mode multi --config clusters.yml --transport stream
 ```
 
 ### Example Integration Script

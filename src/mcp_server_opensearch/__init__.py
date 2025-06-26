@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from .stdio_server import serve as serve_stdio
-from .sse_server import serve as serve_sse
+from .streaming_server import serve as serve_streaming
 
 
 def main() -> None:
@@ -17,12 +17,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description='OpenSearch MCP Server')
     parser.add_argument(
         '--transport',
-        choices=['stdio', 'sse'],
+        choices=['stdio', 'stream'],
         default='stdio',
-        help='Transport type (stdio or sse)',
+        help='Transport type (stdio or stream)',
     )
-    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (SSE only)')
-    parser.add_argument('--port', type=int, default=9900, help='Port to listen on (SSE only)')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (streaming only)')
+    parser.add_argument(
+        '--port', type=int, default=9900, help='Port to listen on (streaming only)'
+    )
     parser.add_argument(
         '--mode',
         choices=['single', 'multi'],
@@ -41,7 +43,7 @@ def main() -> None:
         asyncio.run(serve_stdio(mode=args.mode, profile=args.profile, config=args.config))
     else:
         asyncio.run(
-            serve_sse(
+            serve_streaming(
                 host=args.host,
                 port=args.port,
                 mode=args.mode,
