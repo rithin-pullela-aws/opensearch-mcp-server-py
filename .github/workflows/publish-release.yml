@@ -30,9 +30,12 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: '3.x'
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade build twine
       - name: Build project for distribution
         run: |
-          make build
+          python -m build
           tar zcvf artifacts.tar.gz dist
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
