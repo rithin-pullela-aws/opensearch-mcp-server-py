@@ -46,7 +46,10 @@ def get_opensearch_version(args: baseToolArgs) -> Version:
     Returns:
         Version: The version of OpenSearch cluster (SemVer style)
     """
-    from .client import initialize_client
+    from .client import initialize_client, is_serverless
+
+    if is_serverless(args):
+        return Version.parse('2.11.0')
 
     client = initialize_client(args)
     response = client.info()
