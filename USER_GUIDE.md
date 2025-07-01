@@ -71,17 +71,7 @@ Configure `claude_desktop_config.json` from Settings > Developer. See [here](htt
   }
 }
 ```
-
-**Supported Environment Variables for Single Mode:**
-- `OPENSEARCH_URL` (required): Your OpenSearch cluster endpoint
-- `OPENSEARCH_USERNAME` & `OPENSEARCH_PASSWORD`: For basic authentication
-- `AWS_IAM_ARN`: For IAM role authentication
-- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SESSION_TOKEN`: For AWS credentials
-- `AWS_REGION`: The AWS region of the cluster
-- `AWS_OPENSEARCH_SERVERLESS`: Set to "true" for OpenSearch Serverless
-- `AWS_PROFILE`: AWS profile name (optional)
-- `OPENSEARCH_SSL_VERIFY`: Control SSL certificate verification (default: "true", set to "false" to disable)
-
+See [Environment Variables](#environment-variables) for supported environment variables. 
 See [Authentication](#authentication) section for detailed authentication setup.
 
 #### Multi Mode (For Multiple Clusters)
@@ -407,34 +397,6 @@ When using multi-mode, each cluster in your YAML configuration file accepts the 
 | **AWS Credentials Authentication** | `opensearch_url` | `aws_region`, `profile` |
 | **OpenSearch Serverless** | `opensearch_url`, `aws_region` | `profile`, `is_serverless: true` |
 
-### Tool Filters in Configuration File
-
-**Single Mode Only**: Tool filter in config file is only used in single mode:
-
-```yaml
-# Single mode configuration with tool filters
-version: "1.0"
-description: "Config for tool filters"
-
-# Tool filtering configuration (single mode only)
-tool_category:
-  critical:
-    - "ListIndexTool"
-    - "SearchIndexTool"
-
-tool_filters:
-  disabled_tools:
-    - "ExplainTool"
-  disabled_categories:
-    - "CountTool"
-  disabled_tools_regex:
-    - "search.*"
-  settings:
-    allow_write: true
-```
-
-**Note**: Tool filtering in configuration files is only supported in single mode. In multi mode, tool filtering is not supported.
-
 ## Tool Filter
 
 OpenSearch MCP server supports tool filtering to disable specific tools by name, category, or operation type. You can configure filtering using either a YAML configuration file or environment variables.
@@ -496,6 +458,7 @@ export OPENSEARCH_SETTINGS_ALLOW_WRITE=true
 - Tool names are case-insensitive
 - All configuration fields are optional
 - When both config file and environment variables are provided, the config file will be prioritized
+- Tool filtering in configuration files is only supported in single mode. In multi mode, tool filtering is not supported
 
 ## LangChain Integration
 
