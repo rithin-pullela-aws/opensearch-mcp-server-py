@@ -458,7 +458,7 @@ export OPENSEARCH_SETTINGS_ALLOW_WRITE=true
 - Tool names are case-insensitive
 - All configuration fields are optional
 - When both config file and environment variables are provided, the config file will be prioritized
-- Tool filtering in configuration files is only supported in single mode. In multi mode, tool filtering is not supported
+- Tool filtering is only supported in single mode. In multi mode, tool filtering is not supported
 
 ## LangChain Integration
 
