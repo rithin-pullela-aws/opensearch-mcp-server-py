@@ -12,7 +12,6 @@ from typing import Any, Dict
 from urllib.parse import urlparse
 
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -29,25 +28,70 @@ def set_profile(profile: str) -> None:
     arg_profile = profile
 
 
-def is_serverless(args_or_cluster_info: baseToolArgs | ClusterInfo | None = None) -> bool:
+def get_aws_region(cluster_info: ClusterInfo | None) -> str:
+    """Get the AWS region based on priority order.
+
+    Priority with cluster_info (multi mode):
+    1. cluster_info.aws_region
+    2. Region from cluster_info.profile
+    3. AWS_REGION environment variable
+    4. Command-line profile (arg_profile)
+    5. AWS_PROFILE environment variable
+    6. Default boto3 session region
+
+    Priority without cluster_info (single mode):
+    1. AWS_REGION environment variable
+    2. Command-line profile (arg_profile)
+    3. AWS_PROFILE environment variable
+    4. Default boto3 session region
+
+    Args:
+        cluster_info (ClusterInfo): Optional cluster information
+
+    Returns:
+        str: AWS region
+    """
+    if cluster_info:
+        if cluster_info.aws_region:
+            return cluster_info.aws_region
+        if cluster_info.profile:
+            session = boto3.Session(profile_name=cluster_info.profile)
+            return session.region_name
+        if os.getenv('AWS_REGION', ''):
+            return os.getenv('AWS_REGION', '')
+        if arg_profile:
+            session = boto3.Session(profile_name=arg_profile)
+            return session.region_name
+        if os.getenv('AWS_PROFILE', ''):
+            session = boto3.Session(profile_name=os.getenv('AWS_PROFILE', ''))
+            return session.region_name
+        else:
+            session = boto3.Session()
+            return session.region_name
+
+    else:
+        if os.getenv('AWS_REGION', ''):
+            return os.getenv('AWS_REGION', '')
+        if arg_profile:
+            session = boto3.Session(profile_name=arg_profile)
+            return session.region_name
+        if os.getenv('AWS_PROFILE', ''):
+            session = boto3.Session(profile_name=os.getenv('AWS_PROFILE', ''))
+            return session.region_name
+        else:
+            session = boto3.Session()
+            return session.region_name
+
+
+def is_serverless(cluster_info: ClusterInfo | None) -> bool:
     """Check if the OpenSearch instance is serverless.
 
     Args:
-        args_or_cluster_info: Either baseToolArgs, ClusterInfo, or None
+        args_or_cluster_info: Either ClusterInfo, or None
 
     Returns:
         bool: True if serverless, False otherwise
     """
-    cluster_info = None
-
-    # Handle baseToolArgs input
-    if isinstance(args_or_cluster_info, baseToolArgs):
-        if args_or_cluster_info and args_or_cluster_info.opensearch_cluster_name:
-            cluster_info = get_cluster(args_or_cluster_info.opensearch_cluster_name)
-    # Handle ClusterInfo input
-    elif isinstance(args_or_cluster_info, ClusterInfo):
-        cluster_info = args_or_cluster_info
-
     # Check cluster_info first
     if cluster_info:
         return cluster_info.is_serverless
@@ -56,25 +100,28 @@ def is_serverless(args_or_cluster_info: baseToolArgs | ClusterInfo | None = None
     return os.getenv('AWS_OPENSEARCH_SERVERLESS', '').lower() == 'true'
 
 
-def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSearch:
-    """Initialize and return an OpenSearch client with appropriate authentication.
+def initialize_client_with_cluster(cluster_info: ClusterInfo | None) -> OpenSearch:
+    """Initialize an OpenSearch client with authentication.
 
-    The function attempts to authenticate in the following order:
+    Authentication methods (in order):
     1. No authentication (only if OPENSEARCH_NO_AUTH=true environment variable is set)
-    2. Basic authentication using OPENSEARCH_USERNAME and OPENSEARCH_PASSWORD
-    3. AWS IAM authentication using boto3 credentials
-       - Uses 'aoss' service name if OPENSEARCH_SERVERLESS=true
-       - Uses 'es' service name otherwise
+    2. IAM role authentication (if iam_arn is provided)
+    3. Basic authentication (username/password)
+    4. AWS credentials from boto3 session
+
+    Service name depends on serverless mode:
+    - 'aoss' for OpenSearch Serverless
+    - 'es' for standard OpenSearch
 
     Args:
-        cluster_info (ClusterInfo): Cluster information object containing authentication and connection details
+        cluster_info: Optional cluster information
 
     Returns:
-        OpenSearch: An initialized OpenSearch client instance.
+        OpenSearch: Client instance
 
     Raises:
-        ValueError: If opensearch_url is empty or invalid
-        RuntimeError: If no valid authentication method is available
+        ValueError: If opensearch_url is missing
+        RuntimeError: If authentication fails
     """
     opensearch_url = (
         cluster_info.opensearch_url if cluster_info else os.getenv('OPENSEARCH_URL', '')
@@ -89,13 +136,11 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     opensearch_password = (
         cluster_info.opensearch_password if cluster_info else os.getenv('OPENSEARCH_PASSWORD', '')
     )
-    aws_region = cluster_info.aws_region if cluster_info else ''
     iam_arn = cluster_info.iam_arn if cluster_info else os.getenv('AWS_IAM_ARN', '')
     profile = cluster_info.profile if cluster_info else arg_profile
     if not profile:
         profile = os.getenv('AWS_PROFILE', '')
 
-    # Check if using OpenSearch Serverless
     is_serverless_mode = is_serverless(cluster_info)
     service_name = OPENSEARCH_SERVERLESS_SERVICE if is_serverless_mode else OPENSEARCH_SERVICE
 
@@ -114,8 +159,8 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
     }
 
     session = boto3.Session(profile_name=profile) if profile else boto3.Session()
-    if not aws_region:
-        aws_region = session.region_name or os.getenv('AWS_REGION', '')
+    aws_region = get_aws_region(cluster_info)
+    print("aws_region is", aws_region)
 
     # 1. Try no authentication if explicitly enabled
     if os.getenv('OPENSEARCH_NO_AUTH', '').lower() == 'true':
@@ -179,20 +224,17 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo = None) -> OpenSear
 
 
 def initialize_client(args: baseToolArgs) -> OpenSearch:
-    """Initialize and return an OpenSearch client with appropriate authentication.
+    """Initialize and return an OpenSearch client based on provided arguments.
 
-    This function gets cluster information from the provided arguments and then
-    initializes the OpenSearch client using that information.
+    Supports two modes:
+    - Multi-cluster: When args.opensearch_cluster_name is provided
+    - Single-cluster: When no cluster name is provided (uses environment variables)
 
     Args:
-        args (baseToolArgs): The arguments object containing authentication and connection details
+        args (baseToolArgs): Arguments containing optional opensearch_cluster_name
 
     Returns:
-        OpenSearch: An initialized OpenSearch client instance.
-
-    Raises:
-        ValueError: If opensearch_url is empty or invalid
-        RuntimeError: If no valid authentication method is available
+        OpenSearch: An initialized OpenSearch client instance
     """
     cluster_info = None
     if args and args.opensearch_cluster_name:

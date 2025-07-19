@@ -2,8 +2,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import logging
 from semver import Version
 from tools.tool_params import *
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 
 # List all the helper functions, these functions perform a single rest call to opensearch
@@ -62,12 +66,12 @@ def get_opensearch_version(args: baseToolArgs) -> Version:
     Returns:
         Version: The version of OpenSearch cluster (SemVer style)
     """
-    from .client import initialize_client, is_serverless
+    from .client import initialize_client
 
-    if is_serverless(args):
-        # TODO: The version is placeholder with no impact on logic, we need to add serverless compatibility check for all tools
-        return Version.parse('2.11.0')
-
-    client = initialize_client(args)
-    response = client.info()
-    return Version.parse(response['version']['number'])
+    try:
+        client = initialize_client(args)
+        response = client.info()
+        return Version.parse(response['version']['number'])
+    except Exception as e:
+        logger.error(f'Error getting OpenSearch version: {e}')
+        return None

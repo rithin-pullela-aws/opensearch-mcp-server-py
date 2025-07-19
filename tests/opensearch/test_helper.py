@@ -212,6 +212,5 @@ class TestOpenSearchHelper:
         mock_client.info.side_effect = Exception('Failed to get version')
         args = baseToolArgs()
         # Execute and assert
-        with pytest.raises(Exception) as exc_info:
-            get_opensearch_version(args)
-        assert str(exc_info.value) == 'Failed to get version'
+        result = get_opensearch_version(args)
+        assert result is None

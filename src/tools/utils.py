@@ -6,7 +6,7 @@ import yaml
 from semver import Version
 
 
-def is_tool_compatible(current_version: Version, tool_info: dict = {}):
+def is_tool_compatible(current_version: Version | None, tool_info: dict = {}):
     """Check if a tool is compatible with the current OpenSearch version.
 
     Args:
@@ -16,6 +16,9 @@ def is_tool_compatible(current_version: Version, tool_info: dict = {}):
     Returns:
         bool: True if the tool is compatible, False otherwise
     """
+    # Find a version equivalent in serverless mode
+    if not current_version:
+        return True
     min_tool_version = Version.parse(
         tool_info.get('min_version', '0.0.0'), optional_minor_and_patch=True
     )

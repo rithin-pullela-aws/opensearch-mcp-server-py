@@ -190,24 +190,18 @@ def get_tools(mode: str = 'single', config: str = '') -> dict:
     if config and any(env_config.values()):
         logging.warning('Both config file and environment variables are set. Using config file.')
 
-    # Apply tool filtering
+    # Apply tool filtering, update the TOOL_REGISTRY
     process_tool_filter(
         filter_path=config if config else None,
         **{k: v for k, v in env_config.items() if not config},
     )
 
-    # Check if running in OpenSearch Serverless mode
-    from opensearch.client import is_serverless
-
-    is_serverless = is_serverless(baseToolArgs())
-
     for name, info in TOOL_REGISTRY.items():
         # Create a copy to avoid modifying the original tool info
         tool_info = info.copy()
 
-        # Skip version compatibility check for serverless mode
-        # In serverless, all tools are available regardless of version
-        if not is_serverless and not is_tool_compatible(version, info):
+        # If tool is not compatible with the current OpenSearch version, skip, don't enable
+        if not is_tool_compatible(version, info):
             continue
 
         # Remove baseToolArgs fields from input schema for single mode

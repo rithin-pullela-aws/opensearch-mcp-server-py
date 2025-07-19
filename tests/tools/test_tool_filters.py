@@ -153,10 +153,10 @@ class TestGetTools:
             assert 'index' in schema['required']
 
     @patch.dict('os.environ', {'AWS_OPENSEARCH_SERVERLESS': 'true'})
-    def test_get_tools_single_mode_serverless_skips_version_check(
+    def test_get_tools_single_mode_serverless_passes_compatibility_check(
         self, mock_tool_registry, mock_patches
     ):
-        """Test that serverless mode skips version compatibility checks."""
+        """Test that serverless mode passes version compatibility checks."""
         mock_get_version, mock_tool_reg, mock_is_compatible = mock_patches
 
         with (
@@ -165,7 +165,7 @@ class TestGetTools:
             mock_is_compatible as mock_compat,
         ):
             # Setup mocks
-            mock_version.return_value = Version.parse('2.5.0')
+            mock_version.return_value = None
             mock_reg.items.return_value = mock_tool_registry.items()
 
             # Call get_tools in single mode with serverless environment
@@ -175,9 +175,6 @@ class TestGetTools:
             assert len(result) == 2
             assert 'ListIndexTool' in result
             assert 'SearchIndexTool' in result
-
-            # Version compatibility check should not be called
-            mock_compat.assert_not_called()
 
     def test_get_tools_single_mode_handles_missing_properties(self, mock_patches):
         """Test that single mode handles schemas without properties field."""
