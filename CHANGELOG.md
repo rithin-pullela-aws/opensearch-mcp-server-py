@@ -3,7 +3,6 @@
 Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
-- Handle Tool Filtering failure gracefully and define priority to the AWS Region definitions ([#74](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/74))
 
 ### Added
 - Extend list indices tool ([#68](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/68))
@@ -12,10 +11,14 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 ### Removed
 
 ### Fixed
-- Fix endpoint selection bug in ClusterHealthTool and CountTool ([#59](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/59))
-- Fix Serverless issues ([#61](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/61))
+- Handle Tool Filtering failure gracefully and define priority to the AWS Region definitions ([#74](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/74))
 
 ### Security
+
+## [Released 0.2]
+### Fixed
+- Fix endpoint selection bug in ClusterHealthTool and CountTool ([#59](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/59))
+- Fix Serverless issues ([#61](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/61))
 
 ## [Released 0.2]
 ### Added
