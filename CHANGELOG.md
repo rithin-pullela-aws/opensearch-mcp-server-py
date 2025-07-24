@@ -13,6 +13,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Fixed
 - Handle Tool Filtering failure gracefully and define priority to the AWS Region definitions ([#74](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/74))
+- Fix Tool Renaming Edge cases ([#80](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/80))
 
 ### Security
 
