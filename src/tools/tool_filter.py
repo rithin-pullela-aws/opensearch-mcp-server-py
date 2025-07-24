@@ -69,8 +69,7 @@ def process_tool_filter(
     try:
         # Create display name lookup
         display_name = {
-            tool_info.get('display_name', '').lower(): k
-            for k, tool_info in tool_registry.items()
+            tool_info.get('display_name', '').lower(): k for k, tool_info in tool_registry.items()
         }
 
         # Initialize collections

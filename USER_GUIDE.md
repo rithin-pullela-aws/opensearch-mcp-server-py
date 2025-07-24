@@ -511,6 +511,23 @@ export OPENSEARCH_SETTINGS_ALLOW_WRITE=true
 
 OpenSearch MCP server supports tool customization to modify tool display names, descriptions, and other properties. You can customize tools using either a YAML configuration file or runtime parameters.
 
+**Note:** Display names must follow the pattern `^[a-zA-Z0-9_-]+$` (alphanumeric characters, underscores, and hyphens only).
+
+### Supported Field Aliases
+
+The following field aliases are supported for tool customization:
+
+**Display Name Aliases:**
+- `display_name` (standard)
+- `name`
+- `displayName` 
+- `customName`
+
+**Description Aliases:**
+- `description` (standard)
+- `desc`
+- `customDescription`
+
 ### Configuration Methods
 
 1. **YAML Configuration File**
@@ -519,7 +536,7 @@ Create a YAML file with your tool customization settings:
 ```yaml
 tools:
   ListIndexTool:
-    display_name: "Index Manager"
+    display_name: "Index_Manager"
     description: "List and manage OpenSearch indices"
   GetShardsTool:
     description: "Retrieve detailed information about OpenSearch shards"
@@ -534,7 +551,7 @@ python -m mcp_server_opensearch --config path/to/config.yml
 
 Customize tools directly via command line arguments:
 ```bash
-python -m mcp_server_opensearch --tool.ListIndexTool.display_name="Index Manager" --tool.SearchIndexTool.description="Custom search tool"
+python -m mcp_server_opensearch --tool.ListIndexTool.display_name="Index_Manager" --tool.SearchIndexTool.description="Custom search tool"
 ```
 
 ### Priority

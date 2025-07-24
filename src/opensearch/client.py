@@ -160,11 +160,13 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo | None) -> OpenSear
 
     session = boto3.Session(profile_name=profile) if profile else boto3.Session()
     aws_region = get_aws_region(cluster_info)
-    print("aws_region is", aws_region)
+    print('aws_region is', aws_region)
 
     # 1. Try no authentication if explicitly enabled
     if os.getenv('OPENSEARCH_NO_AUTH', '').lower() == 'true':
-        logger.info('[NO AUTH] Attempting connection without authentication (OPENSEARCH_NO_AUTH=true)')
+        logger.info(
+            '[NO AUTH] Attempting connection without authentication (OPENSEARCH_NO_AUTH=true)'
+        )
         try:
             return OpenSearch(**client_kwargs)
         except Exception as e:
@@ -219,7 +221,7 @@ def initialize_client_with_cluster(cluster_info: ClusterInfo | None) -> OpenSear
             return OpenSearch(**client_kwargs)
     except (boto3.exceptions.Boto3Error, Exception) as e:
         logger.error(f'[AWS CREDS] Failed to get AWS credentials: {str(e)}')
-        
+
     raise RuntimeError('No valid AWS or basic authentication provided for OpenSearch')
 
 

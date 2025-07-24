@@ -27,10 +27,10 @@ clusters:
 # Tool customization configurations (supported in both Single and Multi Mode)
 tools:
   ListIndexTool:
-    display_name: "My Custom Index Lister"
+    display_name: "My_Custom_Index_Lister"
     description: "This is a custom description for the tool that lists indices. It's much more descriptive now!"
   SearchIndexTool:
-    display_name: "Super Searcher"
+    display_name: "Super_Searcher"
   GetShardsTool:
     description: "A better description to get information about shards in OpenSearch."
 

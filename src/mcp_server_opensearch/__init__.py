@@ -13,7 +13,21 @@ from .streaming_server import serve as serve_streaming
 def parse_unknown_args_to_dict(unknown_args: List[str]) -> Dict[str, str]:
     """Parses a list of unknown arguments into a dictionary."""
     parser = argparse.ArgumentParser()
-    arg_keys = {arg.split('=')[0] for arg in unknown_args if arg.startswith('--')}
+
+    # Extract argument keys and track duplicates with warnings
+    seen = set()
+    duplicates = set()
+    arg_keys = set()
+
+    for arg in unknown_args:
+        if arg.startswith('--'):
+            key = arg.split('=')[0]
+            arg_keys.add(key)
+            if key in seen:
+                duplicates.add(key)
+                logging.warning(f"Duplicate argument '{key}' found. Using the latest value.")
+            else:
+                seen.add(key)
 
     for key in arg_keys:
         parser.add_argument(key)
@@ -22,7 +36,7 @@ def parse_unknown_args_to_dict(unknown_args: List[str]) -> Dict[str, str]:
         parsed_args, _ = parser.parse_known_args(unknown_args)
         return {k: v for k, v in vars(parsed_args).items() if v is not None}
     except Exception as e:
-        logging.error(f"Error parsing unknown arguments: {e}")
+        logging.error(f'Error parsing unknown arguments: {e}')
         return {}
 
 

@@ -38,11 +38,13 @@ async def create_mcp_server(
         load_clusters_from_yaml(config_file_path)
 
     server = Server('opensearch-mcp-server')
-    # Call tool generator and tool fitler
+    # Call tool generator
     await generate_tools_from_openapi()
+    # Apply custom tool config (custom name and description)
     customized_registry = apply_custom_tool_config(
         TOOL_REGISTRY, config_file_path, cli_tool_overrides or {}
     )
+    # Get enabled tools (tool filter)
     enabled_tools = get_tools(
         tool_registry=customized_registry, mode=mode, config_file_path=config_file_path
     )
@@ -146,9 +148,7 @@ async def serve(
     config_file_path: str = '',
     cli_tool_overrides: dict = None,
 ) -> None:
-    mcp_server = await create_mcp_server(
-        mode, profile, config_file_path, cli_tool_overrides
-    )
+    mcp_server = await create_mcp_server(mode, profile, config_file_path, cli_tool_overrides)
     app_handler = MCPStarletteApp(mcp_server)
     app = app_handler.create_app()
 

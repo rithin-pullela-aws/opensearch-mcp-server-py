@@ -30,11 +30,13 @@ async def serve(
     if mode == 'multi':
         load_clusters_from_yaml(config_file_path)
 
-    # Call tool generator and tool filter
+    # Call tool generator
     await generate_tools_from_openapi()
+    # Apply custom tool config (custom name and description)
     customized_registry = apply_custom_tool_config(
         TOOL_REGISTRY, config_file_path, cli_tool_overrides or {}
     )
+    # Get enabled tools (tool filter)
     enabled_tools = get_tools(
         tool_registry=customized_registry, mode=mode, config_file_path=config_file_path
     )

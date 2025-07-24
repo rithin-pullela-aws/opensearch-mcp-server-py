@@ -24,19 +24,22 @@ def check_tool_compatibility(tool_name: str, args: baseToolArgs = None):
     opensearch_version = get_opensearch_version(args)
     if not is_tool_compatible(opensearch_version, TOOL_REGISTRY[tool_name]):
         tool_display_name = TOOL_REGISTRY[tool_name].get('display_name', tool_name)
-        min_version = TOOL_REGISTRY[tool_name].get("min_version", "")
-        max_version = TOOL_REGISTRY[tool_name].get("max_version", "")
+        min_version = TOOL_REGISTRY[tool_name].get('min_version', '')
+        max_version = TOOL_REGISTRY[tool_name].get('max_version', '')
 
         version_info = (
-            f"{min_version} to {max_version}" if min_version and max_version else
-            f"{min_version} or later" if min_version else
-            f"up to {max_version}" if max_version else
-            None
+            f'{min_version} to {max_version}'
+            if min_version and max_version
+            else f'{min_version} or later'
+            if min_version
+            else f'up to {max_version}'
+            if max_version
+            else None
         )
 
         error_message = f"Tool '{tool_display_name}' is not supported for this OpenSearch version (current version: {opensearch_version})."
         if version_info:
-            error_message += f" Supported version: {version_info}."
+            error_message += f' Supported version: {version_info}.'
 
         raise Exception(error_message)
 

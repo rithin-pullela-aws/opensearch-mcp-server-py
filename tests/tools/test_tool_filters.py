@@ -87,9 +87,10 @@ class TestGetTools:
     @pytest.fixture
     def mock_patches(self):
         """Set up common patches for get_tools tests."""
-        with patch('tools.tool_filter.get_opensearch_version') as mock_get_version, patch(
-            'tools.tool_filter.is_tool_compatible'
-        ) as mock_is_compatible:
+        with (
+            patch('tools.tool_filter.get_opensearch_version') as mock_get_version,
+            patch('tools.tool_filter.is_tool_compatible') as mock_is_compatible,
+        ):
             yield mock_get_version, mock_is_compatible
 
     def test_get_tools_multi_mode_returns_all_tools(self, mock_tool_registry):
@@ -97,10 +98,7 @@ class TestGetTools:
         result = get_tools(mock_tool_registry, mode='multi')
         assert result == mock_tool_registry
         assert 'param1' in result['ListIndexTool']['input_schema']['properties']
-        assert (
-            'opensearch_cluster_name'
-            in result['SearchIndexTool']['input_schema']['properties']
-        )
+        assert 'opensearch_cluster_name' in result['SearchIndexTool']['input_schema']['properties']
 
     def test_get_tools_single_mode_filters_and_removes_base_fields(
         self, mock_tool_registry, mock_patches
@@ -151,8 +149,8 @@ class TestGetTools:
             # Verify all calls were made with None as the version
             for call in mock_is_compatible.call_args_list:
                 if len(call.args) > 0:  # Check if there are positional arguments
-                    assert call.args[0] is None, f"Expected None version, got {call.args[0]}"
-            
+                    assert call.args[0] is None, f'Expected None version, got {call.args[0]}'
+
             # Both tools should be enabled in serverless mode
             assert 'ListIndexTool' in result
             assert 'SearchIndexTool' in result
@@ -194,7 +192,10 @@ class TestGetTools:
         with patch('tools.tool_filter.TOOL_REGISTRY', mock_tool_registry):
             # Call get_tools without specifying mode
             result = get_tools(mock_tool_registry)
-            assert 'opensearch_cluster_name' not in result['SearchIndexTool']['input_schema']['properties']
+            assert (
+                'opensearch_cluster_name'
+                not in result['SearchIndexTool']['input_schema']['properties']
+            )
 
     def test_get_tools_logs_version_info(self, mock_tool_registry, mock_patches, caplog):
         """Test that get_tools logs version information in single mode."""
@@ -281,16 +282,16 @@ class TestProcessToolFilter:
             tool_registry=self.tool_registry,
             disabled_tools='CountTool',
             disabled_tools_regex='list.*',
-            allow_write=True
+            allow_write=True,
         )
         assert 'CountTool' in self.tool_registry  # Renamed to CustomCountTool
         assert 'ListModelTool' in self.tool_registry  # Renamed to ModelListTool
 
         process_tool_filter(
             tool_registry=self.tool_registry,
-            disabled_tools='CustomCountTool', 
+            disabled_tools='CustomCountTool',
             disabled_tools_regex='model.*',
-            allow_write=True
+            allow_write=True,
         )
         assert 'CustomCountTool' not in self.tool_registry
         assert 'ModelListTool' not in self.tool_registry

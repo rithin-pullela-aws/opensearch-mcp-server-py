@@ -16,7 +16,14 @@ class TestOpenSearchClient:
         """Setup that runs before each test method."""
         # Clear any existing environment variables
         self.original_env = {}
-        for key in ['OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD', 'AWS_REGION', 'OPENSEARCH_URL', 'OPENSEARCH_NO_AUTH', 'OPENSEARCH_SSL_VERIFY']:
+        for key in [
+            'OPENSEARCH_USERNAME',
+            'OPENSEARCH_PASSWORD',
+            'AWS_REGION',
+            'OPENSEARCH_URL',
+            'OPENSEARCH_NO_AUTH',
+            'OPENSEARCH_SSL_VERIFY',
+        ]:
             if key in os.environ:
                 self.original_env[key] = os.environ[key]
                 del os.environ[key]

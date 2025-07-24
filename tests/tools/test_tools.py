@@ -29,6 +29,7 @@ class TestTools:
 
         # Clear any existing imports to ensure fresh imports
         import sys
+
         modules_to_clear = [
             'tools.tools',
         ]
@@ -69,29 +70,29 @@ class TestTools:
         # Setup: mock full index info as returned by OpenSearch cat.indices
         self.mock_client.cat.indices.return_value = [
             {
-                "health": "green",
-                "status": "open",
-                "index": "index1",
-                "uuid": "uuid1",
-                "pri": "1",
-                "rep": "1",
-                "docs.count": "100",
-                "docs.deleted": "5",
-                "store.size": "1mb",
-                "pri.store.size": "0.5mb"
+                'health': 'green',
+                'status': 'open',
+                'index': 'index1',
+                'uuid': 'uuid1',
+                'pri': '1',
+                'rep': '1',
+                'docs.count': '100',
+                'docs.deleted': '5',
+                'store.size': '1mb',
+                'pri.store.size': '0.5mb',
             },
             {
-                "health": "yellow",
-                "status": "open",
-                "index": "index2",
-                "uuid": "uuid2",
-                "pri": "2",
-                "rep": "2",
-                "docs.count": "200",
-                "docs.deleted": "10",
-                "store.size": "2mb",
-                "pri.store.size": "1mb"
-            }
+                'health': 'yellow',
+                'status': 'open',
+                'index': 'index2',
+                'uuid': 'uuid2',
+                'pri': '2',
+                'rep': '2',
+                'docs.count': '200',
+                'docs.deleted': '10',
+                'store.size': '2mb',
+                'pri.store.size': '1mb',
+            },
         ]
         # Execute
         result = await self._list_indices_tool(self.ListIndicesArgs())
@@ -110,15 +111,15 @@ class TestTools:
         """Test list_indices_tool returns detailed info for a single index."""
         # Setup: mock detailed index info as returned by OpenSearch indices.get
         mock_index_info = {
-            "index1": {
-                "aliases": {},
-                "mappings": {"properties": {"field1": {"type": "text"}}},
-                "settings": {"index": {"number_of_shards": "1", "number_of_replicas": "1"}}
+            'index1': {
+                'aliases': {},
+                'mappings': {'properties': {'field1': {'type': 'text'}}},
+                'settings': {'index': {'number_of_shards': '1', 'number_of_replicas': '1'}},
             }
         }
         self.mock_client.indices.get.return_value = mock_index_info
         # Execute
-        args = self.ListIndicesArgs(index="index1")
+        args = self.ListIndicesArgs(index='index1')
         result = await self._list_indices_tool(args)
         # Assert
         assert len(result) == 1
@@ -126,8 +127,11 @@ class TestTools:
         assert 'Index information for index1' in result[0]['text']
         assert '"index1"' in result[0]['text']
         assert '"number_of_shards": "1"' in result[0]['text']
-        assert '"field1": {"type": "text"}' in result[0]['text'] or '"type": "text"' in result[0]['text']
-        self.mock_client.indices.get.assert_called_once_with(index="index1")
+        assert (
+            '"field1": {"type": "text"}' in result[0]['text']
+            or '"type": "text"' in result[0]['text']
+        )
+        self.mock_client.indices.get.assert_called_once_with(index='index1')
 
     @pytest.mark.asyncio
     async def test_list_indices_tool_error(self):

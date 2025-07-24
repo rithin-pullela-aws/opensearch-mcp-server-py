@@ -286,7 +286,7 @@ def generate_tool_from_group(base_name: str, endpoints: List[Dict]) -> Dict[str,
         input_schema['required'] = required_fields
 
     return {
-        'display_name': f"{base_name}Tool",
+        'display_name': f'{base_name}Tool',
         'description': description,
         'input_schema': input_schema,
         'function': tool_func,
