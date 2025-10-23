@@ -216,9 +216,10 @@ The LLM should choose the appropriate cluster based on the operation context (e.
 
 The server supports multiple authentication methods with the following priority order:
 1. **No Authentication** (only if `OPENSEARCH_NO_AUTH=true` environment variable is set)
-2. **IAM Role Authentication**
-3. **Basic Authentication**
-4. **AWS Credentials Authentication**
+2. **Header-Based Authentication** (only if `OPENSEARCH_HEADER_AUTH=true` environment variable is set)
+3. **IAM Role Authentication**
+4. **Basic Authentication**
+5. **AWS Credentials Authentication**
 
 ### Single Mode Authentication
 
@@ -227,6 +228,37 @@ The server supports multiple authentication methods with the following priority 
 export OPENSEARCH_URL="<your_opensearch_domain_url>"
 export OPENSEARCH_NO_AUTH="true"
 ```
+
+#### Header-Based Authentication (for dynamic credentials)
+```bash
+export OPENSEARCH_HEADER_AUTH="true"
+```
+
+When `OPENSEARCH_HEADER_AUTH=true` is set, the server will extract AWS credentials and OpenSearch connection details from HTTP request headers instead of using environment variables or configuration files. This is useful for scenarios where credentials need to be passed dynamically per request.
+
+**Required Headers:**
+- `opensearch-url`: The OpenSearch cluster URL
+- `aws-region`: AWS region for the credentials
+- `aws-access-key-id`: AWS access key ID
+- `aws-secret-access-key`: AWS secret access key
+- `aws-session-token`: AWS session token
+- `aws-service-name`: AWS service name (e.g., 'es' for OpenSearch, 'aoss' for OpenSearch Serverless)
+
+**Example Usage:**
+```bash
+# Set the environment variable
+export OPENSEARCH_HEADER_AUTH="true"
+
+# The server will then extract credentials from request headers like:
+# opensearch-url: https://your-domain.us-east-1.es.amazonaws.com
+# aws-region: us-east-1
+# aws-access-key-id: AKIAIOSFODNN7EXAMPLE
+# aws-secret-access-key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+# aws-session-token: AQoDYXdzEJr1KEXAMPLE...
+# aws-service-name: es
+```
+
+**Note:** This authentication method is primarily designed for use with streaming servers where credentials can be passed through HTTP headers. It's not suitable for STDIO mode.
 
 #### IAM Role Authentication
 ```bash
@@ -370,6 +402,36 @@ python -m mcp_server_opensearch --mode multi --config config.yml --profile my-aw
 python -m mcp_server_opensearch --mode multi
 ```
 
+### Header-Based Authentication with Streaming Server
+
+When using header-based authentication with streaming servers, you can pass credentials dynamically through HTTP headers:
+
+```bash
+# Start the streaming server with header auth enabled
+export OPENSEARCH_HEADER_AUTH="true"
+python -m mcp_server_opensearch --transport stream --host 0.0.0.0 --port 9900
+```
+
+Then make requests with the required headers:
+
+```bash
+curl -X POST http://localhost:9900/sse \
+  -H "opensearch-url: https://your-domain.us-east-1.es.amazonaws.com" \
+  -H "aws-region: us-east-1" \
+  -H "aws-access-key-id: AKIAIOSFODNN7EXAMPLE" \
+  -H "aws-secret-access-key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" \
+  -H "aws-session-token: AQoDYXdzEJr1KEXAMPLE..." \
+  -H "aws-service-name: es" \
+  -H "Content-Type: application/json" \
+  -d '{"method": "tools/list"}'
+```
+
+**Important Notes:**
+- Header-based authentication only works with streaming servers (`--transport stream`)
+- It's not supported in STDIO mode or Multi Mode
+- Each request must include all required headers
+- This is ideal for scenarios where credentials change per request or are managed externally
+
 ## Command Line Parameters
 
 | Parameter | Type | Default | Description |
@@ -444,6 +506,7 @@ When using multi-mode, each cluster in your YAML configuration file accepts the 
 | Authentication Method | Required Parameters | Optional Parameters |
 |----------------------|-------------------|-------------------|
 | **No Authentication** | `opensearch_url` | `opensearch_no_auth: true` |
+| **Header-Based Authentication** | `OPENSEARCH_HEADER_AUTH=true` | Headers: `opensearch-url`, `aws-region`, `aws-access-key-id`, `aws-secret-access-key`, `aws-session-token`, `aws-service-name` |
 | **Basic Authentication** | `opensearch_url`, `opensearch_username`, `opensearch_password` | `profile` |
 | **IAM Role Authentication** | `opensearch_url`, `iam_arn`, `aws_region` | `profile` |
 | **AWS Credentials Authentication** | `opensearch_url` | `aws_region`, `profile` |

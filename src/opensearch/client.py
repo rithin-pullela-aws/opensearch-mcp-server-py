@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import boto3
+import contextvars
 import logging
 import os
+from mcp.server.lowlevel.server import request_ctx
 from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
+from starlette.requests import Request
 from tools.tool_params import baseToolArgs
 from typing import Any, Dict
 from urllib.parse import urlparse
@@ -245,7 +248,55 @@ def initialize_client(args: baseToolArgs) -> OpenSearch:
     Returns:
         OpenSearch: An initialized OpenSearch client instance
     """
+    if os.getenv('OPENSEARCH_HEADER_AUTH', '').lower() == 'true':
+        return create_client_with_headers()
     cluster_info = None
     if args and args.opensearch_cluster_name:
         cluster_info = get_cluster(args.opensearch_cluster_name)
     return initialize_client_with_cluster(cluster_info)
+
+
+def create_client_with_headers() -> OpenSearch:
+    """Create a client with the headers."""
+    headers = {}
+    request_context = request_ctx.get()
+    request = request_context.request
+    if request and isinstance(request, Request):
+        headers = dict(request.headers)
+
+    opensearch_url = headers.get('opensearch-url', '')
+    aws_region = headers.get('aws-region', '')
+    aws_access_key_id = headers.get('aws-access-key-id', '')
+    aws_secret_access_key = headers.get('aws-secret-access-key', '')
+    aws_session_token = headers.get('aws-session-token', '')
+    aws_service_name = headers.get('aws-service-name', '')
+
+    if not opensearch_url:
+        raise ValueError('OpenSearch URL must be provided in headers')
+    if not aws_region:
+        raise ValueError('AWS region must be provided in headers')
+    if not aws_access_key_id:
+        raise ValueError('AWS access key ID must be provided in headers')
+    if not aws_secret_access_key:
+        raise ValueError('AWS secret access key must be provided in headers')
+    if not aws_session_token:
+        raise ValueError('AWS session token must be provided in headers')
+    if not aws_service_name:
+        raise ValueError('AWS service name must be provided in headers')
+
+    client_kwargs: Dict[str, Any] = {
+        'hosts': [opensearch_url],
+        'use_ssl': True,
+        'verify_certs': True,
+        'connection_class': RequestsHttpConnection,
+    }
+
+    aws_auth = AWS4Auth(
+        aws_access_key_id,
+        aws_secret_access_key,
+        aws_region,
+        aws_service_name,
+        session_token=aws_session_token,
+    )
+    client_kwargs['http_auth'] = aws_auth
+    return OpenSearch(**client_kwargs)

@@ -4,11 +4,13 @@
 import boto3
 import os
 import pytest
-from opensearch.client import initialize_client
+from opensearch.client import initialize_client, create_client_with_headers
 from opensearchpy import RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from tools.tool_params import baseToolArgs
 from unittest.mock import Mock, patch
+from starlette.requests import Request
+import contextvars
 
 
 class TestOpenSearchClient:
@@ -24,6 +26,7 @@ class TestOpenSearchClient:
             'OPENSEARCH_NO_AUTH',
             'OPENSEARCH_SSL_VERIFY',
             'OPENSEARCH_TIMEOUT',
+            'OPENSEARCH_HEADER_AUTH',
         ]:
             if key in os.environ:
                 self.original_env[key] = os.environ[key]
@@ -204,3 +207,73 @@ class TestOpenSearchClient:
         assert client == mock_client
         call_kwargs = mock_opensearch.call_args[1]
         assert call_kwargs['timeout'] == 60
+
+    # Tests for header-based authentication
+    @patch('opensearch.client.OpenSearch')
+    @patch('opensearch.client.request_ctx')
+    def test_create_client_with_headers_success(self, mock_request_ctx, mock_opensearch):
+        """Test successful client creation with headers."""
+        # Mock request context and headers
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {
+            'opensearch-url': 'https://test-opensearch-domain.com',
+            'aws-region': 'us-west-2',
+            'aws-access-key-id': 'test-access-key',
+            'aws-secret-access-key': 'test-secret-key',
+            'aws-session-token': 'test-session-token',
+            'aws-service-name': 'es',
+        }
+
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Mock OpenSearch client
+        mock_client = Mock()
+        mock_opensearch.return_value = mock_client
+
+        # Execute
+        client = create_client_with_headers()
+
+        # Assert
+        assert client == mock_client
+        mock_opensearch.assert_called_once()
+        call_kwargs = mock_opensearch.call_args[1]
+        assert call_kwargs['hosts'] == ['https://test-opensearch-domain.com']
+        assert call_kwargs['use_ssl'] is True
+        assert call_kwargs['verify_certs'] is True
+        assert call_kwargs['connection_class'] == RequestsHttpConnection
+        assert isinstance(call_kwargs['http_auth'], AWS4Auth)
+
+    @patch('opensearch.client.request_ctx')
+    def test_create_client_with_headers_missing_headers(self, mock_request_ctx):
+        """Test client creation fails when required headers are missing."""
+        # Mock request context with missing headers
+        mock_request = Mock(spec=Request)
+        mock_request.headers = {'opensearch-url': 'https://test-opensearch-domain.com'}
+
+        mock_context = Mock()
+        mock_context.request = mock_request
+        mock_request_ctx.get.return_value = mock_context
+
+        # Execute and assert
+        with pytest.raises(ValueError) as exc_info:
+            create_client_with_headers()
+        assert 'AWS region must be provided in headers' in str(exc_info.value)
+
+    @patch('opensearch.client.create_client_with_headers')
+    def test_initialize_client_with_opensearch_header_auth_enabled(self, mock_create_client):
+        """Test initialize_client calls create_client_with_headers when OPENSEARCH_HEADER_AUTH=true."""
+        # Set environment variable
+        os.environ['OPENSEARCH_HEADER_AUTH'] = 'true'
+
+        # Mock create_client_with_headers
+        mock_client = Mock()
+        mock_create_client.return_value = mock_client
+
+        # Execute
+        client = initialize_client(baseToolArgs())
+
+        # Assert
+        assert client == mock_client
+        mock_create_client.assert_called_once()
