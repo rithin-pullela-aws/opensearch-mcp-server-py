@@ -61,9 +61,7 @@ class TestOpenSearchClient:
         with pytest.raises(ConfigurationError) as exc_info:
             initialize_client(baseToolArgs(opensearch_cluster_name=''))
 
-        assert 'OPENSEARCH_URL environment variable must be set for single mode' in str(
-            exc_info.value
-        )
+        assert 'OPENSEARCH_URL environment variable is required but not set' in str(exc_info.value)
 
     @patch('opensearch.client.OpenSearch')
     @patch('opensearch.client.get_aws_region_single_mode')
@@ -271,7 +269,9 @@ class TestOpenSearchClient:
 
     @patch('opensearch.client.OpenSearch')
     @patch('opensearch.client.get_aws_region_multi_mode')
-    def test_initialize_client_no_auth_priority_cluster_over_env(self, mock_get_region, mock_opensearch):
+    def test_initialize_client_no_auth_priority_cluster_over_env(
+        self, mock_get_region, mock_opensearch
+    ):
         """Test that cluster config opensearch_no_auth takes priority over environment variable."""
         from mcp_server_opensearch.clusters_information import ClusterInfo
         from opensearch.client import _initialize_client_multi_mode
@@ -300,7 +300,9 @@ class TestOpenSearchClient:
     @patch('opensearch.client.OpenSearch')
     @patch('opensearch.client.get_cluster')
     @patch('opensearch.client.get_aws_region_multi_mode')
-    def test_initialize_client_multi_cluster_no_auth(self, mock_get_region, mock_get_cluster, mock_opensearch):
+    def test_initialize_client_multi_cluster_no_auth(
+        self, mock_get_region, mock_get_cluster, mock_opensearch
+    ):
         """Test client initialization in multi-cluster mode with no-auth cluster."""
         from mcp_server_opensearch.clusters_information import ClusterInfo
         from mcp_server_opensearch.global_state import set_mode

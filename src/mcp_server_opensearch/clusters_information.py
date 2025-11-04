@@ -21,6 +21,7 @@ class ClusterInfo(BaseModel):
     timeout: Optional[int] = None
     opensearch_no_auth: Optional[bool] = None
     ssl_verify: Optional[bool] = None
+    opensearch_header_auth: Optional[bool] = None
 
 
 # Global dictionary to store cluster information
@@ -81,7 +82,13 @@ def load_clusters_from_yaml(file_path: str) -> None:
         except PermissionError as e:
             raise PermissionError(f'Permission denied reading YAML file {file_path}: {str(e)}')
         except UnicodeDecodeError as e:
-            raise UnicodeDecodeError(f'Encoding error reading YAML file {file_path}: {str(e)}')
+            raise UnicodeDecodeError(
+                e.encoding,
+                e.object,
+                e.start,
+                e.end,
+                f'Encoding error reading YAML file {file_path}: {str(e)}',
+            )
         except OSError as e:
             raise OSError(f'OS error reading YAML file {file_path}: {str(e)}')
 
@@ -106,6 +113,8 @@ def load_clusters_from_yaml(file_path: str) -> None:
                     is_serverless=cluster_config.get('is_serverless', None),
                     timeout=cluster_config.get('timeout', None),
                     opensearch_no_auth=cluster_config.get('opensearch_no_auth', None),
+                    ssl_verify=cluster_config.get('ssl_verify', None),
+                    opensearch_header_auth=cluster_config.get('opensearch_header_auth', None),
                 )
                 # Check if possible to connect to the cluster
                 is_connected, error_message = check_cluster_connection(cluster_info)

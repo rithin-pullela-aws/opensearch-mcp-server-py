@@ -27,6 +27,10 @@ clusters:
   no-auth-cluster:
     opensearch_url: "http://localhost:9200"
     opensearch_no_auth: true
+  
+  header-auth-cluster:
+    opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
+    opensearch_header_auth: true
 
 Tool customization configurations (supported in both Single and Multi Mode)
 tools:
