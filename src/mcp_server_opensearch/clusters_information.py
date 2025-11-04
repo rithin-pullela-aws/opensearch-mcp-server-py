@@ -19,6 +19,8 @@ class ClusterInfo(BaseModel):
     profile: Optional[str] = None
     is_serverless: Optional[bool] = None
     timeout: Optional[int] = None
+    opensearch_no_auth: Optional[bool] = None
+    ssl_verify: Optional[bool] = None
 
 
 # Global dictionary to store cluster information
@@ -103,6 +105,7 @@ def load_clusters_from_yaml(file_path: str) -> None:
                     profile=cluster_config.get('profile', None),
                     is_serverless=cluster_config.get('is_serverless', None),
                     timeout=cluster_config.get('timeout', None),
+                    opensearch_no_auth=cluster_config.get('opensearch_no_auth', None),
                 )
                 # Check if possible to connect to the cluster
                 is_connected, error_message = check_cluster_connection(cluster_info)
@@ -142,9 +145,9 @@ def check_cluster_connection(cluster_info: ClusterInfo) -> tuple[bool, str]:
     """
     try:
         # Lazy import to avoid circular dependency
-        from opensearch.client import initialize_client_with_cluster
+        from opensearch.client import _initialize_client_multi_mode
 
-        client = initialize_client_with_cluster(cluster_info)
+        client = _initialize_client_multi_mode(cluster_info)
         client.ping()
         return True, ''
     except Exception as e:
