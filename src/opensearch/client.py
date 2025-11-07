@@ -18,6 +18,7 @@ from mcp.server.lowlevel.server import request_ctx
 from starlette.requests import Request
 
 from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
+from mcp_server_opensearch.global_state import get_mode, get_profile
 from opensearchpy import OpenSearch, RequestsHttpConnection
 from requests_aws4auth import AWS4Auth
 from tools.tool_params import baseToolArgs
@@ -70,8 +71,6 @@ def initialize_client(args: baseToolArgs) -> OpenSearch:
         AuthenticationError: If authentication fails
     """
     try:
-        from mcp_server_opensearch.global_state import get_mode
-
         mode = get_mode()
         logger.info(f'Initializing OpenSearch client in {mode} mode')
 
@@ -132,7 +131,8 @@ def _initialize_client_single_mode() -> OpenSearch:
         opensearch_password = os.getenv('OPENSEARCH_PASSWORD', '').strip()
         opensearch_no_auth = os.getenv('OPENSEARCH_NO_AUTH', '').lower() == 'true'
         iam_arn = os.getenv('AWS_IAM_ARN', '').strip()
-        profile = os.getenv('AWS_PROFILE', '').strip()
+        # Prefer command line argument, then environment variable
+        profile = get_profile() or os.getenv('AWS_PROFILE', '').strip()
         is_serverless_mode = os.getenv('AWS_OPENSEARCH_SERVERLESS', '').lower() == 'true'
         opensearch_timeout_str = os.getenv('OPENSEARCH_TIMEOUT', '').strip()
         opensearch_timeout = int(opensearch_timeout_str) if opensearch_timeout_str else None
@@ -140,6 +140,9 @@ def _initialize_client_single_mode() -> OpenSearch:
         aws_access_key_id = None
         aws_secret_access_key = None
         aws_session_token = None
+
+        # Default to region from environment
+        aws_region = get_aws_region_single_mode()
 
         # Check if header auth is enabled and update variables accordingly
         use_header_auth = os.getenv('OPENSEARCH_HEADER_AUTH', '').lower() == 'true'
@@ -154,15 +157,10 @@ def _initialize_client_single_mode() -> OpenSearch:
             aws_access_key_id = header_auth.get('aws_access_key_id')
             aws_secret_access_key = header_auth.get('aws_secret_access_key')
             aws_session_token = header_auth.get('aws_session_token')
-            # Get region from header if available, otherwise fall back to env lookup
+            # Override region if provided in headers
             header_region = header_auth.get('aws_region')
             if header_region:
                 aws_region = header_region
-            else:
-                aws_region = get_aws_region_single_mode()
-        else:
-            # Only lookup region if header auth is not enabled
-            aws_region = get_aws_region_single_mode()
 
         # Validate URL after potential header override (must come from either env or headers)
         if not opensearch_url or not opensearch_url.strip():
@@ -229,7 +227,8 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> OpenSearch:
         opensearch_password = cluster_info.opensearch_password or ''
         opensearch_no_auth = cluster_info.opensearch_no_auth or False
         iam_arn = cluster_info.iam_arn or ''
-        profile = cluster_info.profile or ''
+        # Prefer cluster config, then command line argument, then environment variable
+        profile = cluster_info.profile or get_profile() or os.getenv('AWS_PROFILE', '').strip()
         is_serverless_mode = cluster_info.is_serverless or False
         opensearch_timeout = (
             cluster_info.timeout if cluster_info.timeout is not None else DEFAULT_TIMEOUT
@@ -240,6 +239,9 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> OpenSearch:
         aws_access_key_id = None
         aws_secret_access_key = None
         aws_session_token = None
+
+        # Default to region from cluster config
+        aws_region = get_aws_region_multi_mode(cluster_info)
 
         # Check if header auth is enabled and update variables accordingly
         use_header_auth = cluster_info.opensearch_header_auth or False
@@ -254,15 +256,10 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> OpenSearch:
             aws_access_key_id = header_auth.get('aws_access_key_id')
             aws_secret_access_key = header_auth.get('aws_secret_access_key')
             aws_session_token = header_auth.get('aws_session_token')
-            # Get region from header if available, otherwise fall back to cluster config
+            # Override region if provided in headers
             header_region = header_auth.get('aws_region')
             if header_region:
                 aws_region = header_region
-            else:
-                aws_region = get_aws_region_multi_mode(cluster_info)
-        else:
-            # Only lookup region if header auth is not enabled
-            aws_region = get_aws_region_multi_mode(cluster_info)
 
         # Use common client creation function
         return _create_opensearch_client(
@@ -483,7 +480,7 @@ def get_aws_region_single_mode() -> Optional[str]:
 
     Priority order:
     1. AWS_REGION environment variable
-    2. AWS_PROFILE environment variable
+    2. Profile (command line argument, then environment variable)
     3. Default boto3 session region
 
     Returns:
@@ -497,8 +494,8 @@ def get_aws_region_single_mode() -> Optional[str]:
             logger.debug(f'Using AWS_REGION: {aws_region}')
             return aws_region
 
-        # Try AWS_PROFILE
-        aws_profile = os.getenv('AWS_PROFILE', '').strip()
+        # Try command line argument, then environment variable
+        aws_profile = get_profile() or os.getenv('AWS_PROFILE', '').strip()
         if aws_profile:
             try:
                 session = boto3.Session(profile_name=aws_profile)
@@ -535,7 +532,7 @@ def get_aws_region_multi_mode(cluster_info: ClusterInfo) -> Optional[str]:
     1. cluster_info.aws_region
     2. Region from cluster_info.profile
     3. AWS_REGION environment variable
-    4. AWS_PROFILE environment variable
+    4. Profile (command line argument, then environment variable)
     5. Default boto3 session region
 
     Args:
