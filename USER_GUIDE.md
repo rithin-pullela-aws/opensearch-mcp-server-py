@@ -15,7 +15,7 @@
 
 ## Overview
 
-The OpenSearch MCP (Model Context Protocol) Server  provides a bridge between AI agents and OpenSearch clusters. It supports both single-cluster and multi-cluster configurations with various authentication methods including IAM roles, basic authentication, AWS credentials, and header-based authentication.
+The OpenSearch MCP (Model Context Protocol) Server provides a bridge between AI agents and OpenSearch clusters. It supports both single-cluster and multi-cluster configurations with various authentication methods including IAM roles, basic authentication, AWS credentials, and header-based authentication.
 The server can be started in both STDIO and streaming modes.
 
 ### Streaming Server
