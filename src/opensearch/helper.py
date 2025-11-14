@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # these functions will be used in tools folder to eventually write more complex tools
 async def list_indices(args: ListIndicesArgs) -> json:
     from .client import get_opensearch_client
-
+    logger.info("this shit is triggered")
     async with get_opensearch_client(args) as client:
         response = await client.cat.indices()
         return response
