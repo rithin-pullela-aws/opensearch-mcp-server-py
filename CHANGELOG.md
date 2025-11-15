@@ -10,6 +10,14 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Removed
 
+## [Released 0.5.1]
+
+### Added
+
+### Fixed
+- Fix IAM role based auth (#129)
+### Removed
+
 ## [Released 0.5.0]
 ### Added
 - Add `GenericOpenSearchApiTool` - A flexible, general-purpose tool that can interact with any OpenSearch API endpoint, addressing tool explosion and reducing context size. Supports all HTTP methods with write operation protection via `OPENSEARCH_SETTINGS_ALLOW_WRITE` environment variable. Closes [#109](https://github.com/opensearch-project/opensearch-mcp-server-py/issues/109)
