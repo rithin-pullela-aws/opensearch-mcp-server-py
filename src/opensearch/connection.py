@@ -32,7 +32,7 @@ class ResponseSizeExceededError(OpenSearchClientError):
 class BufferedAsyncHttpConnection(AsyncHttpConnection):
     """
     Async HTTP connection that buffers responses with size limiting.
-    
+
     This connection class prevents large responses from being loaded into memory
     by streaming the response and checking size limits during processing. If the
     response exceeds max_response_size, it stops reading and raises an exception
@@ -42,7 +42,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
     def __init__(self, *args, max_response_size=DEFAULT_MAX_RESPONSE_SIZE, **kwargs):
         """
         Initialize buffered connection with response size limit.
-        
+
         Args:
             max_response_size: Maximum allowed response size in bytes (default: None - no limit)
             *args, **kwargs: Arguments passed to parent AsyncHttpConnection
@@ -57,10 +57,10 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
     async def perform_request(self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None):
         """
         Perform HTTP request with response size limiting.
-        
+
         This implementation leverages the parent class for authentication and session management
         but implements streaming response size checking to prevent memory exhaustion from large responses.
-        
+
         Args:
             method: HTTP method (GET, POST, etc.)
             url: Request URL
@@ -69,26 +69,26 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
             timeout: Request timeout
             ignore: HTTP status codes to ignore
             headers: Additional headers
-            
+
         Returns:
             Tuple of (status, headers, response_data)
-            
+
         Raises:
             ResponseSizeExceededError: If response exceeds max_response_size during streaming
         """
         logger.debug(f'Making size-limited request: {method} {url} (max_size={self.max_response_size})')
-
+        original_url = url;
         try:
             # Import required modules
             import aiohttp
             from urllib.parse import urlencode
             import yarl
-            
+
             # Ensure session is created (from parent class)
             if self.session is None:
                 await self._create_aiohttp_session()
             assert self.session is not None
-            
+
             # Build URL and prepare request (following parent class logic)
             orig_body = body
             url_path = self.url_prefix + url
@@ -126,7 +126,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                 }
 
             start = self.loop.time()
-            
+
             # Make request with streaming response handling
             async with self.session.request(
                 method,
@@ -137,11 +137,11 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                 timeout=timeout_obj,
                 fingerprint=self.ssl_assert_fingerprint,
             ) as response:
-                
+
                 # Stream the response with optional size checking
                 chunks = []
                 total_size = 0
-                
+
                 async for chunk in response.content.iter_chunked(8192):
                     # Only check size limit if max_response_size is set
                     if self.max_response_size is not None and total_size + len(chunk) > self.max_response_size:
@@ -163,10 +163,10 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                             f"Stopped reading at {total_size} bytes to prevent memory exhaustion. "
                             f"Consider increasing max_response_size or refining your query to return less data."
                         )
-                    
+
                     chunks.append(chunk)
                     total_size += len(chunk)
-                
+
                 # Combine all chunks and decode
                 response_data = b''.join(chunks)
                 try:
@@ -174,7 +174,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                 except UnicodeDecodeError:
                     # For binary data, convert to string representation
                     raw_data = str(response_data)
-                
+
                 duration = self.loop.time() - start
 
             # Handle warnings (following parent class logic)
@@ -210,12 +210,12 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
         except Exception as e:
             # For connection errors and other failures, fall back to parent implementation
             logger.warning(f'Streaming request failed ({type(e).__name__}: {e}), falling back to parent implementation')
-            return await self._fallback_perform_request(method, url, params, body, timeout, ignore, headers)
+            return await self._fallback_perform_request(method, original_url, params, body, timeout, ignore, headers)
 
     async def _fallback_perform_request(self, method, url, params=None, body=None, timeout=None, ignore=(), headers=None):
         """
         Fallback to parent implementation with post-download size checking.
-        
+
         This is used when streaming is not available or fails.
         """
         try:
@@ -223,7 +223,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
             status, response_headers, response_data = await super().perform_request(
                 method, url, params, body, timeout, ignore, headers
             )
-            
+
             # Check response size after getting the data (only if limit is set)
             if isinstance(response_data, str):
                 data_size = len(response_data.encode('utf-8'))
@@ -232,7 +232,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
             else:
                 # Unknown data type, convert to string and measure
                 data_size = len(str(response_data).encode('utf-8'))
-            
+
             if self.max_response_size is not None and data_size > self.max_response_size:
                 logger.error(
                     f'Response size exceeded limit: {data_size} > {self.max_response_size} bytes'
@@ -242,7 +242,7 @@ class BufferedAsyncHttpConnection(AsyncHttpConnection):
                     f"Received {data_size} bytes. "
                     f"Consider increasing max_response_size or refining your query to return less data."
                 )
-            
+
             if self.max_response_size is not None:
                 logger.debug(f'Response size check passed: {data_size} bytes (limit: {self.max_response_size})')
             else:

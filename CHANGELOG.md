@@ -7,6 +7,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Support to define max response size from opensearch cluster for better memory management
 
 ### Fixed
+- Fix _fallback_perform_request using wrong url
 
 ### Removed
 
