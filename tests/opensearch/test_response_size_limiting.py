@@ -194,6 +194,136 @@ class TestBufferedAsyncHttpConnection:
         assert connection.max_response_size == 1024
 
 
+class TestBufferedAsyncHttpConnectionAuth:
+    """Test that BufferedAsyncHttpConnection passes headers to the auth callable."""
+
+    @pytest.mark.asyncio
+    async def test_auth_callable_receives_headers(self):
+        """Test that the auth callable receives headers kwarg (not query_string).
+
+        This verifies the fix for the SSM tunnel / proxy auth issue where
+        AWSV4SignerAsyncAuth needs the request headers to support host override
+        for SigV4 signing.
+        """
+        connection = BufferedAsyncHttpConnection(
+            host='localhost',
+            port=9200,
+            use_ssl=False,
+        )
+
+        # Create a mock auth callable that records how it was called
+        auth_calls = []
+
+        def mock_auth(**kwargs):
+            auth_calls.append(kwargs)
+            return {'Authorization': 'AWS4-HMAC-SHA256 ...', 'X-Amz-Date': '20250210T000000Z'}
+
+        connection._http_auth = mock_auth
+
+        # Mock the session so the actual HTTP request doesn't go out
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.headers = MagicMock()
+        mock_response.headers.getall = MagicMock(return_value=())
+        mock_response.content = AsyncMock()
+        mock_response.content.iter_chunked = MagicMock(return_value=AsyncIterator([b'{"ok": true}']))
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=AsyncContextManager(mock_response))
+        connection.session = mock_session
+
+        # Mock the event loop time
+        mock_loop = MagicMock()
+        mock_loop.time = MagicMock(return_value=0.0)
+        connection.loop = mock_loop
+
+        status, _, data = await connection.perform_request('GET', '/_cluster/health')
+
+        # Verify the auth callable was called with keyword args including headers
+        assert len(auth_calls) == 1
+        call = auth_calls[0]
+        assert 'method' in call
+        assert 'url' in call
+        assert 'body' in call
+        assert 'headers' in call
+        assert call['method'] == 'GET'
+        assert isinstance(call['headers'], dict)
+
+    @pytest.mark.asyncio
+    async def test_auth_callable_headers_contain_host_override(self):
+        """Test that a host header in connection config reaches the auth callable.
+
+        This is the end-to-end test for the tunnel/proxy use case:
+        connect to localhost but sign for the real domain.
+        """
+        connection = BufferedAsyncHttpConnection(
+            host='localhost',
+            port=9200,
+            use_ssl=False,
+            headers={'host': 'real-opensearch-domain.us-east-1.es.amazonaws.com'},
+        )
+
+        auth_calls = []
+
+        def mock_auth(**kwargs):
+            auth_calls.append(kwargs)
+            return {'Authorization': 'AWS4-HMAC-SHA256 ...', 'X-Amz-Date': '20250210T000000Z'}
+
+        connection._http_auth = mock_auth
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.headers = MagicMock()
+        mock_response.headers.getall = MagicMock(return_value=())
+        mock_response.content = AsyncMock()
+        mock_response.content.iter_chunked = MagicMock(return_value=AsyncIterator([b'{"ok": true}']))
+
+        mock_session = AsyncMock()
+        mock_session.request = MagicMock(return_value=AsyncContextManager(mock_response))
+        connection.session = mock_session
+
+        mock_loop = MagicMock()
+        mock_loop.time = MagicMock(return_value=0.0)
+        connection.loop = mock_loop
+
+        await connection.perform_request('GET', '/_cluster/health')
+
+        assert len(auth_calls) == 1
+        headers = auth_calls[0]['headers']
+        assert headers.get('host') == 'real-opensearch-domain.us-east-1.es.amazonaws.com'
+
+
+class AsyncIterator:
+    """Helper to create an async iterator from a list."""
+
+    def __init__(self, items):
+        self.items = items
+        self.index = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self.index >= len(self.items):
+            raise StopAsyncIteration
+        item = self.items[self.index]
+        self.index += 1
+        return item
+
+
+class AsyncContextManager:
+    """Helper to create an async context manager from a value."""
+
+    def __init__(self, value):
+        self.value = value
+
+    async def __aenter__(self):
+        return self.value
+
+    async def __aexit__(self, *args):
+        pass
+
+
 class TestCreateOpenSearchClient:
     """Test the _create_opensearch_client function with max_response_size."""
 
