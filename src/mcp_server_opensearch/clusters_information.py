@@ -5,7 +5,14 @@ import logging
 import os
 import yaml
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, List, Optional
+
+
+class HeadersConfig(BaseModel):
+    """Configuration for custom headers sent to OpenSearch."""
+
+    static: Optional[Dict[str, str]] = None
+    forward: Optional[List[str]] = None
 
 
 class ClusterInfo(BaseModel):
@@ -23,6 +30,7 @@ class ClusterInfo(BaseModel):
     ssl_verify: Optional[bool] = None
     opensearch_header_auth: Optional[bool] = None
     max_response_size: Optional[int] = None
+    headers: Optional[HeadersConfig] = None
 
 
 # Global dictionary to store cluster information
@@ -93,6 +101,15 @@ async def load_clusters_from_yaml(file_path: str) -> None:
         except OSError as e:
             raise OSError(f'OS error reading YAML file {file_path}: {str(e)}')
 
+        # Parse global headers config
+        global_headers = _parse_headers_config(config.get('headers', None))
+        if global_headers:
+            logging.info(
+                f'Loaded global headers config: '
+                f'static={list((global_headers.static or {}).keys())}, '
+                f'forward={global_headers.forward or []}'
+            )
+
         # Process clusters
         clusters = config.get('clusters', {})
         result['total_clusters'] = len(clusters)
@@ -104,6 +121,14 @@ async def load_clusters_from_yaml(file_path: str) -> None:
                 if 'opensearch_url' not in cluster_config:
                     result['errors'].append(f'Missing opensearch_url for cluster: {cluster_name}')
                     continue
+
+                # Per-cluster headers override global entirely
+                cluster_headers_raw = cluster_config.get('headers', None)
+                if cluster_headers_raw and isinstance(cluster_headers_raw, dict):
+                    cluster_headers = _parse_headers_config(cluster_headers_raw)
+                else:
+                    cluster_headers = global_headers
+
                 cluster_info = ClusterInfo(
                     opensearch_url=cluster_config['opensearch_url'],
                     iam_arn=cluster_config.get('iam_arn', None),
@@ -117,6 +142,7 @@ async def load_clusters_from_yaml(file_path: str) -> None:
                     ssl_verify=cluster_config.get('ssl_verify', None),
                     opensearch_header_auth=cluster_config.get('opensearch_header_auth', None),
                     max_response_size=cluster_config.get('max_response_size', None),
+                    headers=cluster_headers,
                 )
 
                 # Add cluster to registry without checking connection
@@ -135,3 +161,21 @@ async def load_clusters_from_yaml(file_path: str) -> None:
 
     except yaml.YAMLError as e:
         raise yaml.YAMLError(f'Invalid YAML format in {file_path}: {str(e)}')
+
+
+def _parse_headers_config(raw: any) -> Optional[HeadersConfig]:
+    """Parse a raw headers config dict into a HeadersConfig object.
+
+    Args:
+        raw: Raw value from YAML (expected to be a dict with 'static' and/or 'forward' keys)
+
+    Returns:
+        HeadersConfig if valid, None otherwise
+    """
+    if not raw or not isinstance(raw, dict):
+        return None
+    static = raw.get('static', None)
+    forward = raw.get('forward', None)
+    if static is None and forward is None:
+        return None
+    return HeadersConfig(static=static, forward=forward)

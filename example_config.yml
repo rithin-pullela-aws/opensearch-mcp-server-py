@@ -1,6 +1,22 @@
 version: "1.0"
 description: "Unified OpenSearch MCP Server Configuration"
 
+# ==============================================================================
+# Global headers configuration (supported in both Single and Multi Mode)
+# ==============================================================================
+# In Multi Mode: applied to all clusters as defaults (per-cluster headers override entirely)
+# In Single Mode: used directly when --config is provided
+#
+# headers:
+#   static:                           # Fixed headers sent on every request to OpenSearch
+#     securitytenant: "admin_tenant"
+#     X-Custom-Api-Key: "your-key"
+#   forward:                          # Headers forwarded from incoming MCP HTTP requests
+#     - "X-Request-ID"                # Exact match (case-insensitive)
+#     - "X-Correlation-ID"
+#     - "^X-Forwarded-.*"             # Regex pattern (starts with ^)
+#     - "^X-Trace-.*"
+
 # Cluster configurations (used in Multi Mode)
 clusters:
   local-cluster:
@@ -33,6 +49,19 @@ clusters:
   header-auth-cluster:
     opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
     opensearch_header_auth: true
+
+  cluster-with-custom-headers:
+    opensearch_url: "https://your-opensearch-domain.us-east-2.es.amazonaws.com"
+    opensearch_username: "admin"
+    opensearch_password: "your_password_here"
+    headers:
+      static:
+        securitytenant: "admin_tenant"
+        X-Custom-Api-Key: "your-api-key"
+      forward:
+        - "X-Request-ID"
+        - "X-Correlation-ID"
+        - "^X-Forwarded-.*"
 
 Tool customization configurations (supported in both Single and Multi Mode)
 tools:
@@ -105,4 +134,14 @@ tools:
 #    - Prevents memory issues by limiting response size
 #    - Default: 10MB (10485760 bytes)
 #    - Can be set per cluster or globally via OPENSEARCH_MAX_RESPONSE_SIZE env var
-#    - Example: max_response_size: 5242880  # 5MB limit 
+#    - Example: max_response_size: 5242880  # 5MB limit
+#
+# 7. Custom Headers:
+#    - Optional: headers.static (dict of key-value pairs sent on every OpenSearch request)
+#    - Optional: headers.forward (list of header names/regex patterns to forward from MCP requests)
+#    - Static headers work with both stdio and HTTP transports
+#    - Forwarded headers only work with HTTP transport (--transport stream)
+#    - Regex patterns in forward must start with ^ (e.g., "^X-Forwarded-.*")
+#    - Global headers section applies to all clusters; per-cluster headers override entirely
+#    - Environment variables: OPENSEARCH_HEADERS_STATIC, OPENSEARCH_HEADERS_FORWARD
+#    - CLI args: --headers-static, --headers-forward

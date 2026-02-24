@@ -11,15 +11,17 @@ authentication methods and connection modes (single vs multi-cluster).
 import boto3
 import logging
 import os
+import re
+import yaml
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Dict, Optional
+from typing import Any, AsyncIterator, Dict, List, Optional
 from urllib.parse import urlparse
 
 from mcp.server.lowlevel.server import request_ctx
 from starlette.requests import Request
 
-from mcp_server_opensearch.clusters_information import ClusterInfo, get_cluster
-from mcp_server_opensearch.global_state import get_mode, get_profile
+from mcp_server_opensearch.clusters_information import ClusterInfo, HeadersConfig, get_cluster
+from mcp_server_opensearch.global_state import get_config_file_path, get_mode, get_profile
 from opensearchpy import AsyncOpenSearch, AWSV4SignerAsyncAuth
 from tools.tool_params import baseToolArgs
 from botocore.credentials import Credentials
@@ -36,7 +38,6 @@ DEFAULT_SSL_VERIFY = True
 
 # Import custom connection classes and exceptions
 from .connection import BufferedAsyncHttpConnection, ResponseSizeExceededError, OpenSearchClientError, DEFAULT_MAX_RESPONSE_SIZE
-
 
 class AuthenticationError(OpenSearchClientError):
     """Exception raised when authentication fails."""
@@ -230,6 +231,18 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
 
         logger.info(f'Initializing single mode OpenSearch client for URL: {opensearch_url}')
 
+        # Collect custom headers (static + forwarded)
+        headers_config = _get_headers_config_single_mode()
+        custom_headers = None
+        if headers_config:
+            forward_patterns = headers_config.forward
+            if forward_patterns:
+                forward_patterns = _validate_forward_patterns(forward_patterns)
+            custom_headers = _collect_custom_headers(
+                static_headers=headers_config.static,
+                forward_patterns=forward_patterns,
+            )
+
         # Use common client creation function
         return _create_opensearch_client(
             opensearch_url=opensearch_url,
@@ -246,6 +259,7 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
             aws_secret_access_key=aws_secret_access_key,
             aws_session_token=aws_session_token,
             max_response_size=max_response_size,
+            custom_headers=custom_headers,
         )
 
     except (ConfigurationError, AuthenticationError):
@@ -336,6 +350,18 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
                 opensearch_username = header_username
                 opensearch_password = header_password
 
+        # Collect custom headers (static + forwarded)
+        headers_config = cluster_info.headers
+        custom_headers = None
+        if headers_config:
+            forward_patterns = headers_config.forward
+            if forward_patterns:
+                forward_patterns = _validate_forward_patterns(forward_patterns)
+            custom_headers = _collect_custom_headers(
+                static_headers=headers_config.static,
+                forward_patterns=forward_patterns,
+            )
+
         # Use common client creation function
         return _create_opensearch_client(
             opensearch_url=opensearch_url,
@@ -352,6 +378,7 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
             aws_secret_access_key=aws_secret_access_key,
             aws_session_token=aws_session_token,
             max_response_size=max_response_size,
+            custom_headers=custom_headers,
         )
 
     except (ConfigurationError, AuthenticationError):
@@ -380,6 +407,7 @@ def _create_opensearch_client(
     aws_secret_access_key: Optional[str] = None,
     aws_session_token: Optional[str] = None,
     max_response_size: Optional[int] = None,
+    custom_headers: Optional[Dict[str, str]] = None,
 ) -> AsyncOpenSearch:
     """Common function to create OpenSearch client with authentication.
 
@@ -401,6 +429,7 @@ def _create_opensearch_client(
         aws_secret_access_key: AWS secret access key from headers (optional)
         aws_session_token: AWS session token from headers (optional)
         max_response_size: Maximum response size in bytes (None means no limit)
+        custom_headers: Custom HTTP headers to send on every request to OpenSearch (optional)
 
     Returns:
         OpenSearch: An initialized OpenSearch client instance
@@ -448,7 +477,12 @@ def _create_opensearch_client(
         'timeout': timeout,
         'max_response_size': response_size_limit,
     }
-    
+
+    # Add custom headers (static + forwarded) -- auth-agnostic, applied to all auth methods
+    if custom_headers:
+        client_kwargs['headers'] = custom_headers
+        logger.info(f'OpenSearch client configured with custom headers: {list(custom_headers.keys())}')
+
     if response_size_limit is not None:
         logger.info(f'Configuring OpenSearch client with max_response_size={response_size_limit} bytes')
     else:
@@ -718,3 +752,154 @@ def _get_auth_from_headers() -> Dict[str, Optional[str]]:
         logger.debug(f'Could not read headers from request context: {e}')
 
     return result
+
+
+# Custom header forwarding functions
+
+def _get_incoming_request_headers() -> Optional[Dict[str, str]]:
+    """Extract all headers from the incoming MCP HTTP request.
+
+    Returns:
+        Dict of header name -> value, or None if not available (e.g., stdio transport).
+    """
+    try:
+        request_context = request_ctx.get()
+        if request_context and hasattr(request_context, 'request'):
+            request = request_context.request
+            if request and isinstance(request, Request):
+                return dict(request.headers)
+    except Exception as e:
+        logger.debug(f'Could not read headers from request context: {e}')
+    return None
+
+
+def _parse_headers_static_env(env_value: str) -> Optional[Dict[str, str]]:
+    """Parse OPENSEARCH_HEADERS_STATIC env var.
+
+    Format: "Header-Name=value,Another-Header=value"
+    Splits on first '=' per entry. Values may contain '='.
+    """
+    if not env_value:
+        return None
+    headers = {}
+    for entry in env_value.split(','):
+        entry = entry.strip()
+        if not entry:
+            continue
+        if '=' not in entry:
+            logger.warning(f'Ignoring malformed header entry (no "="): {entry}')
+            continue
+        key, value = entry.split('=', 1)
+        key, value = key.strip(), value.strip()
+        if key:
+            headers[key] = value
+    return headers if headers else None
+
+
+def _parse_headers_forward_env(env_value: str) -> Optional[List[str]]:
+    """Parse OPENSEARCH_HEADERS_FORWARD env var.
+
+    Format: "Header-Name,^regex-pattern,Another-Header"
+    """
+    if not env_value:
+        return None
+    patterns = [p.strip() for p in env_value.split(',') if p.strip()]
+    return patterns if patterns else None
+
+
+def _validate_forward_patterns(patterns: List[str]) -> List[str]:
+    """Validate forward patterns. Returns list of valid patterns, logs warnings for invalid ones."""
+    valid = []
+    for pattern in patterns:
+        # Validate regex patterns (start with ^)
+        if pattern.startswith('^'):
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                logger.warning(f'Invalid regex forward pattern "{pattern}": {e}. Skipping.')
+                continue
+
+        valid.append(pattern)
+    return valid
+
+
+def _collect_custom_headers(
+    static_headers: Optional[Dict[str, str]] = None,
+    forward_patterns: Optional[List[str]] = None,
+) -> Optional[Dict[str, str]]:
+    """Collect custom headers to send to OpenSearch.
+
+    Merges static headers with headers forwarded from the incoming MCP
+    HTTP request. Forwarded headers take precedence over static headers
+    when the same header name appears in both.
+
+    Args:
+        static_headers: Fixed key-value pairs.
+        forward_patterns: Header names or regex patterns to extract
+                         from the incoming MCP request.
+
+    Returns:
+        Combined headers dict, or None if empty.
+    """
+    result: Dict[str, str] = {}
+
+    # 1. Add static headers
+    if static_headers:
+        result.update(static_headers)
+
+    # 2. Extract forwarded headers from incoming MCP HTTP request
+    if forward_patterns:
+        incoming_headers = _get_incoming_request_headers()
+        if incoming_headers:
+            for pattern in forward_patterns:
+                if pattern.startswith('^'):
+                    # Regex match against all incoming headers
+                    compiled = re.compile(pattern, re.IGNORECASE)
+                    for header_name, header_value in incoming_headers.items():
+                        if compiled.match(header_name):
+                            result[header_name] = header_value
+                else:
+                    # Exact match (case-insensitive)
+                    pattern_lower = pattern.lower()
+                    for header_name, header_value in incoming_headers.items():
+                        if header_name.lower() == pattern_lower:
+                            result[header_name] = header_value
+                            break
+
+    if result:
+        logger.info(f'Custom headers configured: {list(result.keys())}')
+        logger.debug(f'Custom header values: {result}')
+
+    return result if result else None
+
+
+def _get_headers_config_single_mode() -> Optional[HeadersConfig]:
+    """Get headers config for single mode.
+
+    Priority: YAML config > env vars.
+    """
+    # Try YAML config first
+    config_path = get_config_file_path()
+    if config_path:
+        try:
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                headers_raw = config.get('headers', None) if config else None
+                if headers_raw and isinstance(headers_raw, dict):
+                    if os.getenv('OPENSEARCH_HEADERS_STATIC') or os.getenv('OPENSEARCH_HEADERS_FORWARD'):
+                        logger.warning(
+                            'Both YAML config and env vars set for headers. Using YAML config.'
+                        )
+                    return HeadersConfig(
+                        static=headers_raw.get('static', None),
+                        forward=headers_raw.get('forward', None),
+                    )
+        except Exception as e:
+            logger.debug(f'Could not load headers from config file: {e}')
+
+    # Fall back to env vars
+    static = _parse_headers_static_env(os.getenv('OPENSEARCH_HEADERS_STATIC', '').strip())
+    forward = _parse_headers_forward_env(os.getenv('OPENSEARCH_HEADERS_FORWARD', '').strip())
+    if static or forward:
+        return HeadersConfig(static=static, forward=forward)
+    return None

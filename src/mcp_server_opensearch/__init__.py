@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 import logging
+import os
 from typing import Dict, List
 
 
@@ -74,6 +75,16 @@ def main() -> None:
         action='store_true',
         help='Enable debug logging',
     )
+    parser.add_argument(
+        '--headers-static',
+        default='',
+        help='Static headers to send to OpenSearch (format: "Key1=Val1,Key2=Val2")',
+    )
+    parser.add_argument(
+        '--headers-forward',
+        default='',
+        help='Header names/patterns to forward from MCP requests to OpenSearch (comma-separated)',
+    )
 
     args, unknown = parser.parse_known_args()
 
@@ -86,6 +97,12 @@ def main() -> None:
 
     logger.info('Starting MCP server...')
     cli_tool_overrides = parse_unknown_args_to_dict(unknown)
+
+    # CLI header args set env vars (read by client.py)
+    if args.headers_static:
+        os.environ['OPENSEARCH_HEADERS_STATIC'] = args.headers_static
+    if args.headers_forward:
+        os.environ['OPENSEARCH_HEADERS_FORWARD'] = args.headers_forward
 
     # Import servers lazily to avoid circular imports at module load time
     from .stdio_server import serve as serve_stdio
