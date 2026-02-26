@@ -418,6 +418,59 @@ class TestProcessToolFilter:
         assert 'ClusterHealthTool' not in self.tool_registry
         assert 'ExplainTool' not in self.tool_registry
 
+    def test_search_relevance_category_is_not_enabled_by_default(self):
+        """search_relevance tools are not enabled unless the category is explicitly enabled."""
+        registry = {
+            'ListIndexTool': {'display_name': 'ListIndexTool', 'http_methods': 'GET'},
+            'CreateSearchConfigurationTool': {
+                'display_name': 'CreateSearchConfigurationTool',
+                'http_methods': 'PUT',
+            },
+            'GetSearchConfigurationTool': {
+                'display_name': 'GetSearchConfigurationTool',
+                'http_methods': 'GET',
+            },
+            'DeleteSearchConfigurationTool': {
+                'display_name': 'DeleteSearchConfigurationTool',
+                'http_methods': 'DELETE',
+            },
+        }
+        process_tool_filter(tool_registry=registry, allow_write=True)
+
+        # core_tools are enabled by default, search_relevance tools are not
+        assert 'ListIndexTool' in registry
+        assert 'CreateSearchConfigurationTool' not in registry
+        assert 'GetSearchConfigurationTool' not in registry
+        assert 'DeleteSearchConfigurationTool' not in registry
+
+    def test_search_relevance_category_can_be_enabled(self):
+        """search_relevance tools are exposed when the category is explicitly enabled."""
+        registry = {
+            'ListIndexTool': {'display_name': 'ListIndexTool', 'http_methods': 'GET'},
+            'CreateSearchConfigurationTool': {
+                'display_name': 'CreateSearchConfigurationTool',
+                'http_methods': 'PUT',
+            },
+            'GetSearchConfigurationTool': {
+                'display_name': 'GetSearchConfigurationTool',
+                'http_methods': 'GET',
+            },
+            'DeleteSearchConfigurationTool': {
+                'display_name': 'DeleteSearchConfigurationTool',
+                'http_methods': 'DELETE',
+            },
+        }
+        process_tool_filter(
+            tool_registry=registry,
+            enabled_categories='core_tools,search_relevance',
+            allow_write=True,
+        )
+
+        assert 'ListIndexTool' in registry
+        assert 'CreateSearchConfigurationTool' in registry
+        assert 'GetSearchConfigurationTool' in registry
+        assert 'DeleteSearchConfigurationTool' in registry
+
 
 class TestAllowWriteSettings:
     """Test cases for the allow_write setting functionality."""

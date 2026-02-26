@@ -27,6 +27,17 @@ class TestTools:
         self.mock_client.indices.stats = AsyncMock(return_value={})
         self.mock_client.transport.perform_request = AsyncMock(return_value={})
         self.mock_client.info = AsyncMock(return_value={'version': {'number': '2.19.0'}})
+        self.mock_client.plugins = Mock()
+        self.mock_client.plugins.search_relevance = Mock()
+        self.mock_client.plugins.search_relevance.put_search_configurations = AsyncMock(
+            return_value={}
+        )
+        self.mock_client.plugins.search_relevance.get_search_configurations = AsyncMock(
+            return_value={}
+        )
+        self.mock_client.plugins.search_relevance.delete_search_configurations = AsyncMock(
+            return_value={}
+        )
 
         # Patch initialize_client to always return our mock client
         self.init_client_patcher = patch(
@@ -61,6 +72,9 @@ class TestTools:
             GetNodesHotThreadsArgs,
             GetAllocationArgs,
             GetLongRunningTasksArgs,
+            CreateSearchConfigurationArgs,
+            GetSearchConfigurationArgs,
+            DeleteSearchConfigurationArgs,
             get_index_mapping_tool,
             get_shards_tool,
             list_indices_tool,
@@ -75,6 +89,9 @@ class TestTools:
             get_nodes_hot_threads_tool,
             get_allocation_tool,
             get_long_running_tasks_tool,
+            create_search_configuration_tool,
+            get_search_configuration_tool,
+            delete_search_configuration_tool,
         )
 
         self.ListIndicesArgs = ListIndicesArgs
@@ -106,6 +123,12 @@ class TestTools:
         self._get_nodes_hot_threads_tool = get_nodes_hot_threads_tool
         self._get_allocation_tool = get_allocation_tool
         self._get_long_running_tasks_tool = get_long_running_tasks_tool
+        self.CreateSearchConfigurationArgs = CreateSearchConfigurationArgs
+        self.GetSearchConfigurationArgs = GetSearchConfigurationArgs
+        self.DeleteSearchConfigurationArgs = DeleteSearchConfigurationArgs
+        self._create_search_configuration_tool = create_search_configuration_tool
+        self._get_search_configuration_tool = get_search_configuration_tool
+        self._delete_search_configuration_tool = delete_search_configuration_tool
 
     def teardown_method(self):
         """Cleanup after each test method."""
@@ -1158,6 +1181,133 @@ class TestTools:
             method='GET', url='/_nodes'
         )
 
+    @pytest.mark.asyncio
+    async def test_create_search_configuration_tool(self):
+        """Test create_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'_id': 'cfg-1', 'result': 'created'}
+        self.mock_client.plugins.search_relevance.put_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.CreateSearchConfigurationArgs(
+            name='my-config',
+            index='my-index',
+            query='{"query":{"match":{"title":"%SearchText%"}}}',
+            opensearch_cluster_name='',
+        )
+        result = await self._create_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration created' in result[0]['text']
+        assert '"_id":"cfg-1"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.put_search_configurations.assert_called_once_with(
+            body={
+                'name': 'my-config',
+                'index': 'my-index',
+                'query': '{"query":{"match":{"title":"%SearchText%"}}}',
+            }
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_search_configuration_tool_error(self):
+        """Test create_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.put_search_configurations.side_effect = (
+            Exception('Test error')
+        )
+
+        args = self.CreateSearchConfigurationArgs(
+            name='my-config',
+            index='my-index',
+            query='{"query":{"match_all":{}}}',
+            opensearch_cluster_name='',
+        )
+        result = await self._create_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error creating search configuration: Test error' in result[0]['text']
+
+    @pytest.mark.asyncio
+    async def test_get_search_configuration_tool(self):
+        """Test get_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'_id': 'cfg-1', '_source': {'name': 'my-config', 'index': 'my-index'}}
+        self.mock_client.plugins.search_relevance.get_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.GetSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._get_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration cfg-1' in result[0]['text']
+        assert '"_id":"cfg-1"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.get_search_configurations.assert_called_once_with(
+            search_configuration_id='cfg-1'
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_search_configuration_tool_error(self):
+        """Test get_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.get_search_configurations.side_effect = (
+            Exception('Not found')
+        )
+
+        args = self.GetSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._get_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error retrieving search configuration: Not found' in result[0]['text']
+
+    @pytest.mark.asyncio
+    async def test_delete_search_configuration_tool(self):
+        """Test delete_search_configuration_tool successful."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        mock_response = {'result': 'deleted'}
+        self.mock_client.plugins.search_relevance.delete_search_configurations.return_value = (
+            mock_response
+        )
+
+        args = self.DeleteSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._delete_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Search configuration cfg-1 deleted' in result[0]['text']
+        assert '"result":"deleted"' in result[0]['text']
+        self.mock_client.plugins.search_relevance.delete_search_configurations.assert_called_once_with(
+            search_configuration_id='cfg-1'
+        )
+
+    @pytest.mark.asyncio
+    async def test_delete_search_configuration_tool_error(self):
+        """Test delete_search_configuration_tool exception handling."""
+        self.mock_client.info.return_value = {'version': {'number': '3.1.0'}}
+        self.mock_client.plugins.search_relevance.delete_search_configurations.side_effect = (
+            Exception('Test error')
+        )
+
+        args = self.DeleteSearchConfigurationArgs(
+            search_configuration_id='cfg-1', opensearch_cluster_name=''
+        )
+        result = await self._delete_search_configuration_tool(args)
+
+        assert len(result) == 1
+        assert result[0]['type'] == 'text'
+        assert 'Error deleting search configuration: Test error' in result[0]['text']
+
     def test_tool_registry(self):
         """Test TOOL_REGISTRY structure."""
         expected_tools = [
@@ -1175,6 +1325,9 @@ class TestTools:
             'GetNodesHotThreadsTool',
             'GetAllocationTool',
             'GetLongRunningTasksTool',
+            'CreateSearchConfigurationTool',
+            'GetSearchConfigurationTool',
+            'DeleteSearchConfigurationTool',
         ]
 
         for tool in expected_tools:

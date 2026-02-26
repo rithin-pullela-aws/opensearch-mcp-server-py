@@ -61,6 +61,13 @@ The following tools are available but disabled by default. To enable them, see t
 - [GetAllocationTool](https://docs.opensearch.org/latest/api-reference/cat/cat-allocation/): Gets information about shard allocation across nodes in the cluster from the /\_cat/allocation endpoint.
 - [GetLongRunningTasksTool](https://docs.opensearch.org/latest/api-reference/cat/cat-tasks/): Gets information about long-running tasks in the cluster, sorted by running time in descending order.
 
+### Search Relevance Workbench Tools (Disabled by Default)
+Search Relevance Workbench tools are grouped under the `search_relevance` category and can be enabled at once using `OPENSEARCH_ENABLED_CATEGORIES=search_relevance` or by adding `enabled_categories: [search_relevance]` or explicitly adding individual tools to their config file. See the [Tool Filter](USER_GUIDE.md#tool-filter) section in the User Guide for additional information about how to filter tools.
+
+- [CreateSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#creating-search-configurations): Creates a search configuration consisting of a name, a query body (a query in OpenSearch query domain-specific language), and the target index.
+- [GetSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#retrieve-search-configurations): Retrieves a search configuration by ID.
+- [DeleteSearchConfigurationTool](https://docs.opensearch.org/latest/search-plugins/search-relevance/search-configurations/#delete-a-search-configuration): Deletes a search configuration by ID.
+
 ### Skills Tools (Enabled by Default)
 
 Advanced analysis tools for data analysis and troubleshooting.

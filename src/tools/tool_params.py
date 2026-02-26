@@ -254,3 +254,44 @@ class GetNodesArgs(baseToolArgs):
                 {'node_id': '_local', 'metric': 'jvm,os'},
             ]
         }
+
+
+class CreateSearchConfigurationArgs(baseToolArgs):
+    """Arguments for the CreateSearchConfigurationTool."""
+
+    name: str = Field(description='Name of the search configuration')
+    index: str = Field(description='The index to search')
+    query: str = Field(
+        description='The search query in OpenSearch DSL format, provided as a JSON string. '
+        'Use %SearchText% as a placeholder for the search term, e.g. '
+        '\'{"query":{"match":{"title":"%SearchText%"}}}\''
+    )
+
+    class Config:
+        json_schema_extra = {
+            'examples': [
+                {
+                    'name': 'my-config',
+                    'index': 'my-index',
+                    'query': '{"query":{"match":{"title":"%SearchText%"}}}',
+                }
+            ]
+        }
+
+
+class GetSearchConfigurationArgs(baseToolArgs):
+    """Arguments for the GetSearchConfigurationTool."""
+
+    search_configuration_id: str = Field(description='ID of the search configuration to retrieve')
+
+    class Config:
+        json_schema_extra = {'examples': [{'search_configuration_id': 'abc123'}]}
+
+
+class DeleteSearchConfigurationArgs(baseToolArgs):
+    """Arguments for the DeleteSearchConfigurationTool."""
+
+    search_configuration_id: str = Field(description='ID of the search configuration to delete')
+
+    class Config:
+        json_schema_extra = {'examples': [{'search_configuration_id': 'abc123'}]}

@@ -55,6 +55,9 @@ async def search_index(args: SearchIndexArgs) -> json:
     from .client import get_opensearch_client
     from tools.tools import TOOL_REGISTRY
 
+    if isinstance(args.query, str):
+        validate_json_string(args.query)
+
     async with get_opensearch_client(args) as client:
         query = normalize_scientific_notation(args.query)
         
@@ -494,6 +497,86 @@ def _convert_value(v):
         return plain_float(v)
     else:
         return v
+
+
+async def create_search_configuration(args: CreateSearchConfigurationArgs) -> json:
+    """Create a search configuration via the Search Relevance plugin.
+
+    Args:
+        args: CreateSearchConfigurationArgs containing name, index, and query
+
+    Returns:
+        json: OpenSearch response with the created configuration ID
+    """
+    from .client import get_opensearch_client
+
+    validate_json_string(args.query)
+
+    async with get_opensearch_client(args) as client:
+        body = {
+            'name': args.name,
+            'index': args.index,
+            'query': args.query,  # must remain a JSON string, not a dict
+        }
+        response = await client.plugins.search_relevance.put_search_configurations(body=body)
+        return response
+
+
+async def get_search_configuration(args: GetSearchConfigurationArgs) -> json:
+    """Retrieve a search configuration by ID via the Search Relevance plugin.
+
+    Args:
+        args: GetSearchConfigurationArgs containing the search_configuration_id
+
+    Returns:
+        json: OpenSearch response with the search configuration details
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.get_search_configurations(
+            search_configuration_id=args.search_configuration_id
+        )
+        return response
+
+
+async def delete_search_configuration(args: DeleteSearchConfigurationArgs) -> json:
+    """Delete a search configuration by ID via the Search Relevance plugin.
+
+    Args:
+        args: DeleteSearchConfigurationArgs containing the search_configuration_id
+
+    Returns:
+        json: OpenSearch response confirming deletion
+    """
+    from .client import get_opensearch_client
+
+    async with get_opensearch_client(args) as client:
+        response = await client.plugins.search_relevance.delete_search_configurations(
+            search_configuration_id=args.search_configuration_id
+        )
+        return response
+
+
+def validate_json_string(value: str) -> None:
+    """Validate that a string is valid JSON, raising ValueError with a concise message if not.
+
+    Intended to be called early (before any API call) so the LLM receives a small,
+    precise error rather than a verbose OpenSearch response.
+
+    Args:
+        value: The string to validate as JSON.
+
+    Raises:
+        ValueError: If the string is not valid JSON. The message includes the parse
+            error description, line, and column so the problem is immediately obvious.
+    """
+    try:
+        json.loads(value)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"query is not valid JSON: {e.msg} (line {e.lineno}, col {e.colno})"
+        ) from e
 
 
 def normalize_scientific_notation(body):

@@ -3,6 +3,8 @@
 
 import json
 from .tool_params import (
+    CreateSearchConfigurationArgs,
+    DeleteSearchConfigurationArgs,
     GetAllocationArgs,
     GetClusterStateArgs,
     GetIndexInfoArgs,
@@ -13,6 +15,7 @@ from .tool_params import (
     GetNodesArgs,
     GetNodesHotThreadsArgs,
     GetQueryInsightsArgs,
+    GetSearchConfigurationArgs,
     GetSegmentsArgs,
     GetShardsArgs,
     ListIndicesArgs,
@@ -22,6 +25,8 @@ from .tool_params import (
 from .utils import is_tool_compatible
 from opensearch.helper import (
     convert_search_results_to_csv,
+    create_search_configuration,
+    delete_search_configuration,
     get_allocation,
     get_cluster_state,
     get_index,
@@ -34,6 +39,7 @@ from opensearch.helper import (
     get_nodes_hot_threads,
     get_opensearch_version,
     get_query_insights,
+    get_search_configuration,
     get_segments,
     get_shards,
     list_indices,
@@ -498,6 +504,70 @@ async def get_long_running_tasks_tool(args: GetLongRunningTasksArgs) -> list[dic
         ]
 
 
+async def create_search_configuration_tool(args: CreateSearchConfigurationArgs) -> list[dict]:
+    """Tool to create a search configuration via the Search Relevance plugin.
+
+    Args:
+        args: CreateSearchConfigurationArgs
+
+    Returns:
+        list[dict]: Created configuration details in MCP format
+    """
+    try:
+        await check_tool_compatibility('CreateSearchConfigurationTool', args)
+        result = await create_search_configuration(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [{'type': 'text', 'text': f'Search configuration created:\n{formatted_result}'}]
+    except Exception as e:
+        return [{'type': 'text', 'text': f'Error creating search configuration: {str(e)}'}]
+
+
+async def get_search_configuration_tool(args: GetSearchConfigurationArgs) -> list[dict]:
+    """Tool to retrieve a search configuration by ID.
+
+    Args:
+        args: GetSearchConfigurationArgs
+
+    Returns:
+        list[dict]: Search configuration details in MCP format
+    """
+    try:
+        await check_tool_compatibility('GetSearchConfigurationTool', args)
+        result = await get_search_configuration(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [
+            {
+                'type': 'text',
+                'text': f'Search configuration {args.search_configuration_id}:\n{formatted_result}',
+            }
+        ]
+    except Exception as e:
+        return [{'type': 'text', 'text': f'Error retrieving search configuration: {str(e)}'}]
+
+
+async def delete_search_configuration_tool(args: DeleteSearchConfigurationArgs) -> list[dict]:
+    """Tool to delete a search configuration by ID.
+
+    Args:
+        args: DeleteSearchConfigurationArgs
+
+    Returns:
+        list[dict]: Deletion result in MCP format
+    """
+    try:
+        await check_tool_compatibility('DeleteSearchConfigurationTool', args)
+        result = await delete_search_configuration(args)
+        formatted_result = json.dumps(result, separators=(',', ':'))
+        return [
+            {
+                'type': 'text',
+                'text': f'Search configuration {args.search_configuration_id} deleted:\n{formatted_result}',
+            }
+        ]
+    except Exception as e:
+        return [{'type': 'text', 'text': f'Error deleting search configuration: {str(e)}'}]
+
+
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool
 
 
@@ -635,5 +705,33 @@ TOOL_REGISTRY = {
         'args_model': GenericOpenSearchApiArgs,
         'min_version': '1.0.0',
         'http_methods': 'GET, POST, PUT, DELETE, HEAD, PATCH',
+    },
+    'CreateSearchConfigurationTool': {
+        'display_name': 'CreateSearchConfigurationTool',
+        'description': 'Creates a new search configuration in OpenSearch using the Search Relevance plugin. '
+        'The query must be an OpenSearch DSL JSON string with %SearchText% as the search placeholder.',
+        'input_schema': CreateSearchConfigurationArgs.model_json_schema(),
+        'function': create_search_configuration_tool,
+        'args_model': CreateSearchConfigurationArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'PUT',
+    },
+    'GetSearchConfigurationTool': {
+        'display_name': 'GetSearchConfigurationTool',
+        'description': 'Retrieves a specific search configuration by ID from OpenSearch using the Search Relevance plugin.',
+        'input_schema': GetSearchConfigurationArgs.model_json_schema(),
+        'function': get_search_configuration_tool,
+        'args_model': GetSearchConfigurationArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'GET',
+    },
+    'DeleteSearchConfigurationTool': {
+        'display_name': 'DeleteSearchConfigurationTool',
+        'description': 'Deletes a search configuration by ID from OpenSearch using the Search Relevance plugin.',
+        'input_schema': DeleteSearchConfigurationArgs.model_json_schema(),
+        'function': delete_search_configuration_tool,
+        'args_model': DeleteSearchConfigurationArgs,
+        'min_version': '3.1.0',
+        'http_methods': 'DELETE',
     },
 }
