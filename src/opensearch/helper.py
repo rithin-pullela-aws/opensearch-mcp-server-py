@@ -55,8 +55,8 @@ async def search_index(args: SearchIndexArgs) -> json:
     from .client import get_opensearch_client
     from tools.tools import TOOL_REGISTRY
 
-    if isinstance(args.query, str):
-        validate_json_string(args.query)
+    if isinstance(args.query_dsl, str):
+        validate_json_string(args.query_dsl)
 
     async with get_opensearch_client(args) as client:
         query = normalize_scientific_notation(args.query_dsl)
