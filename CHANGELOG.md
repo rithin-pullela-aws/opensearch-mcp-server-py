@@ -8,6 +8,7 @@ Inspired from [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 - Optimize JSON output token usage by removing formatting whitespace across all tools ([#167](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/167))
 - Rename SearchIndexTool parameter `query` to `query_dsl` to avoid confusion with nested query objects ([#172](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/172))
+- Add structured JSON logging (`--log-format json`) for monitoring and metrics ([#178](https://github.com/opensearch-project/opensearch-mcp-server-py/pull/178))
 
 ### Fixed
 
