@@ -4,6 +4,7 @@
 import json
 import logging
 from typing import Dict, Any
+from .tool_logging import log_tool_error
 from .tool_params import baseToolArgs
 from pydantic import Field
 from opensearch.client import get_opensearch_client
@@ -45,7 +46,7 @@ async def call_opensearch_tool(tool_name: str, parameters: Dict[str, Any], args:
         return [{'type': 'text', 'text': f'{tool_name} result:\n{formatted_result}'}]
 
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error executing {tool_name}: {str(e)}'}]
+        return log_tool_error(tool_name, e, f'executing {tool_name}')
 
 async def data_distribution_tool(args: DataDistributionToolArgs) -> list[dict]:
     params = {

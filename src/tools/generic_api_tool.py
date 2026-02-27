@@ -7,6 +7,7 @@ import os
 from typing import Any, Dict, Optional
 from urllib.parse import urlencode
 
+from .tool_logging import log_tool_error
 from .tool_params import baseToolArgs
 from pydantic import BaseModel, Field
 
@@ -158,6 +159,8 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
             return [{'type': 'text', 'text': f'{message}:\n{formatted_response}'}]
 
     except Exception as e:
-        error_message = f'Error calling OpenSearch API ({args.method} {args.path}): {str(e)}'
-        logger.error(error_message)
-        return [{'type': 'text', 'text': error_message}]
+        return log_tool_error(
+            'GenericOpenSearchApiTool', e,
+            f'calling OpenSearch API ({args.method} {args.path})',
+            method=args.method, path=args.path,
+        )

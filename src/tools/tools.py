@@ -22,6 +22,7 @@ from .tool_params import (
     SearchIndexArgs,
     baseToolArgs,
 )
+from .tool_logging import log_tool_error
 from .utils import is_tool_compatible
 from opensearch.helper import (
     convert_search_results_to_csv,
@@ -99,7 +100,7 @@ async def list_indices_tool(args: ListIndicesArgs) -> list[dict]:
             formatted_names = json.dumps(index_names, separators=(',', ':'))
             return [{'type': 'text', 'text': f'Indices:\n{formatted_names}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error listing indices: {str(e)}'}]
+        return log_tool_error('ListIndexTool', e, 'listing indices', index=getattr(args, 'index', None))
 
 
 async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
@@ -110,7 +111,7 @@ async def get_index_mapping_tool(args: GetIndexMappingArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'Mapping for {args.index}:\n{formatted_mapping}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting mapping: {str(e)}'}]
+        return log_tool_error('IndexMappingTool', e, 'getting mapping', index=args.index)
 
 
 async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
@@ -135,7 +136,7 @@ async def search_index_tool(args: SearchIndexArgs) -> list[dict]:
                 }
             ]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error searching index: {str(e)}'}]
+        return log_tool_error('SearchIndexTool', e, 'searching index', index=args.index)
 
 
 async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
@@ -160,7 +161,7 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': formatted_text}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting shards information: {str(e)}'}]
+        return log_tool_error('GetShardsTool', e, 'getting shards information', index=getattr(args, 'index', None))
 
 
 async def get_cluster_state_tool(args: GetClusterStateArgs) -> list[dict]:
@@ -188,7 +189,7 @@ async def get_cluster_state_tool(args: GetClusterStateArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting cluster state: {str(e)}'}]
+        return log_tool_error('GetClusterStateTool', e, 'getting cluster state')
 
 
 async def get_segments_tool(args: GetSegmentsArgs) -> list[dict]:
@@ -235,7 +236,7 @@ async def get_segments_tool(args: GetSegmentsArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_text}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting segment information: {str(e)}'}]
+        return log_tool_error('GetSegmentsTool', e, 'getting segment information', index=getattr(args, 'index', None))
 
 
 async def cat_nodes_tool(args: CatNodesArgs) -> list[dict]:
@@ -278,7 +279,7 @@ async def cat_nodes_tool(args: CatNodesArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_text}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting node information: {str(e)}'}]
+        return log_tool_error('CatNodesTool', e, 'getting node information')
 
 
 async def get_index_info_tool(args: GetIndexInfoArgs) -> list[dict]:
@@ -302,7 +303,7 @@ async def get_index_info_tool(args: GetIndexInfoArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting index information: {str(e)}'}]
+        return log_tool_error('GetIndexInfoTool', e, 'getting index information', index=args.index)
 
 
 async def get_index_stats_tool(args: GetIndexStatsArgs) -> list[dict]:
@@ -328,7 +329,7 @@ async def get_index_stats_tool(args: GetIndexStatsArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting index statistics: {str(e)}'}]
+        return log_tool_error('GetIndexStatsTool', e, 'getting index statistics', index=args.index)
 
 
 async def get_query_insights_tool(args: GetQueryInsightsArgs) -> list[dict]:
@@ -352,7 +353,7 @@ async def get_query_insights_tool(args: GetQueryInsightsArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting query insights: {str(e)}'}]
+        return log_tool_error('GetQueryInsightsTool', e, 'getting query insights')
 
 
 async def get_nodes_hot_threads_tool(args: GetNodesHotThreadsArgs) -> list[dict]:
@@ -374,7 +375,7 @@ async def get_nodes_hot_threads_tool(args: GetNodesHotThreadsArgs) -> list[dict]
         # The hot_threads API returns text, not JSON, so we don't need to format it
         return [{'type': 'text', 'text': f'{message}:\n{result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting hot threads information: {str(e)}'}]
+        return log_tool_error('GetNodesHotThreadsTool', e, 'getting hot threads information')
 
 
 async def get_allocation_tool(args: GetAllocationArgs) -> list[dict]:
@@ -420,7 +421,7 @@ async def get_allocation_tool(args: GetAllocationArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_text}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting allocation information: {str(e)}'}]
+        return log_tool_error('GetAllocationTool', e, 'getting allocation information')
 
 
 async def get_nodes_tool(args: GetNodesArgs) -> list[dict]:
@@ -456,7 +457,7 @@ async def get_nodes_tool(args: GetNodesArgs) -> list[dict]:
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error getting nodes information: {str(e)}'}]
+        return log_tool_error('GetNodesTool', e, 'getting nodes information')
 
 
 async def get_long_running_tasks_tool(args: GetLongRunningTasksArgs) -> list[dict]:
@@ -499,9 +500,7 @@ async def get_long_running_tasks_tool(args: GetLongRunningTasksArgs) -> list[dic
 
         return [{'type': 'text', 'text': f'{message}:\n{formatted_text}'}]
     except Exception as e:
-        return [
-            {'type': 'text', 'text': f'Error getting long-running tasks information: {str(e)}'}
-        ]
+        return log_tool_error('GetLongRunningTasksTool', e, 'getting long-running tasks information')
 
 
 async def create_search_configuration_tool(args: CreateSearchConfigurationArgs) -> list[dict]:
@@ -519,7 +518,7 @@ async def create_search_configuration_tool(args: CreateSearchConfigurationArgs) 
         formatted_result = json.dumps(result, separators=(',', ':'))
         return [{'type': 'text', 'text': f'Search configuration created:\n{formatted_result}'}]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error creating search configuration: {str(e)}'}]
+        return log_tool_error('CreateSearchConfigurationTool', e, 'creating search configuration')
 
 
 async def get_search_configuration_tool(args: GetSearchConfigurationArgs) -> list[dict]:
@@ -542,7 +541,7 @@ async def get_search_configuration_tool(args: GetSearchConfigurationArgs) -> lis
             }
         ]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error retrieving search configuration: {str(e)}'}]
+        return log_tool_error('GetSearchConfigurationTool', e, 'retrieving search configuration')
 
 
 async def delete_search_configuration_tool(args: DeleteSearchConfigurationArgs) -> list[dict]:
@@ -565,7 +564,7 @@ async def delete_search_configuration_tool(args: DeleteSearchConfigurationArgs) 
             }
         ]
     except Exception as e:
-        return [{'type': 'text', 'text': f'Error deleting search configuration: {str(e)}'}]
+        return log_tool_error('DeleteSearchConfigurationTool', e, 'deleting search configuration')
 
 
 from .generic_api_tool import GenericOpenSearchApiArgs, generic_opensearch_api_tool

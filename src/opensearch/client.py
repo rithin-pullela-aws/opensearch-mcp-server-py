@@ -35,7 +35,11 @@ DEFAULT_SSL_VERIFY = True
 
 
 # Import custom connection classes and exceptions
-from .connection import BufferedAsyncHttpConnection, ResponseSizeExceededError, OpenSearchClientError, DEFAULT_MAX_RESPONSE_SIZE
+from .connection import (
+    BufferedAsyncHttpConnection,
+    OpenSearchClientError,
+    DEFAULT_MAX_RESPONSE_SIZE,
+)
 
 
 class AuthenticationError(OpenSearchClientError):
@@ -48,6 +52,30 @@ class ConfigurationError(OpenSearchClientError):
     """Exception raised when configuration is invalid."""
 
     pass
+
+
+def _log_connection_event(
+    auth_method: str,
+    datasource_type: str,
+    opensearch_url: str,
+    error: str,
+) -> None:
+    """Emit a structured error log event for failed datasource connections.
+
+    Only logs failures because AsyncOpenSearch() construction does not
+    actually connect — a "success" event would be misleading.
+    """
+    logger.error(
+        f'Datasource connection failed: {auth_method} ({datasource_type})',
+        extra={
+            'event_type': 'datasource_connection',
+            'auth_method': auth_method,
+            'datasource_type': datasource_type,
+            'status': 'error',
+            'opensearch_url': opensearch_url,
+            'error': error,
+        },
+    )
 
 
 # Public API Functions
@@ -181,10 +209,14 @@ def _initialize_client_single_mode() -> AsyncOpenSearch:
             try:
                 max_response_size = int(max_response_size_str)
                 if max_response_size <= 0:
-                    logger.warning(f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE value {max_response_size}, using default')
+                    logger.warning(
+                        f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE value {max_response_size}, using default'
+                    )
                     max_response_size = None
             except ValueError:
-                logger.warning(f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE format: {max_response_size_str}, using default')
+                logger.warning(
+                    f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE format: {max_response_size_str}, using default'
+                )
         aws_access_key_id = None
         aws_secret_access_key = None
         aws_session_token = None
@@ -300,11 +332,15 @@ def _initialize_client_multi_mode(cluster_info: ClusterInfo) -> AsyncOpenSearch:
                 try:
                     max_response_size = int(max_response_size_str)
                     if max_response_size <= 0:
-                        logger.warning(f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE value {max_response_size}, using default')
+                        logger.warning(
+                            f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE value {max_response_size}, using default'
+                        )
                         max_response_size = None
                 except ValueError:
-                    logger.warning(f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE format: {max_response_size_str}, using default')
-        
+                    logger.warning(
+                        f'Invalid OPENSEARCH_MAX_RESPONSE_SIZE format: {max_response_size_str}, using default'
+                    )
+
         aws_access_key_id = None
         aws_secret_access_key = None
         aws_session_token = None
@@ -424,8 +460,9 @@ def _create_opensearch_client(
     except Exception as e:
         raise ConfigurationError(f'Invalid OpenSearch URL format: {opensearch_url}. Error: {e}')
 
-    # Determine service name
+    # Determine service name and datasource type
     service_name = OPENSEARCH_SERVERLESS_SERVICE if is_serverless_mode else OPENSEARCH_SERVICE
+    datasource_type = 'aoss' if is_serverless_mode else 'aos'
 
     if is_serverless_mode:
         logger.info('Initializing OpenSearch Serverless client with service name: aoss')
@@ -437,8 +474,10 @@ def _create_opensearch_client(
         timeout = DEFAULT_TIMEOUT
 
     # Determine response size limit
-    response_size_limit = max_response_size if max_response_size is not None else DEFAULT_MAX_RESPONSE_SIZE
-    
+    response_size_limit = (
+        max_response_size if max_response_size is not None else DEFAULT_MAX_RESPONSE_SIZE
+    )
+
     # Build client configuration with buffered connection
     client_kwargs: Dict[str, Any] = {
         'hosts': [opensearch_url],
@@ -450,7 +489,9 @@ def _create_opensearch_client(
     }
     
     if response_size_limit is not None:
-        logger.info(f'Configuring OpenSearch client with max_response_size={response_size_limit} bytes')
+        logger.info(
+            f'Configuring OpenSearch client with max_response_size={response_size_limit} bytes'
+        )
     else:
         logger.info('Configuring OpenSearch client with no response size limit')
 
@@ -469,7 +510,7 @@ def _create_opensearch_client(
             try:
                 return AsyncOpenSearch(**client_kwargs)
             except Exception as e:
-                logger.error(f'[NO AUTH] Failed to connect without authentication: {e}')
+                _log_connection_event('no_auth', datasource_type, opensearch_url, str(e))
                 raise AuthenticationError(f'Failed to connect without authentication: {e}')
 
         # 2. Header-based AWS credentials authentication (highest priority when provided)
@@ -491,7 +532,7 @@ def _create_opensearch_client(
                 client_kwargs['http_auth'] = aws_auth
                 return AsyncOpenSearch(**client_kwargs)
             except Exception as e:
-                logger.error(f'[HEADER AUTH] Failed to authenticate with header credentials: {e}')
+                _log_connection_event('header_auth', datasource_type, opensearch_url, str(e))
                 raise AuthenticationError(f'Failed to authenticate with header credentials: {e}')
 
         # 3. IAM role authentication
@@ -518,7 +559,7 @@ def _create_opensearch_client(
                 client_kwargs['http_auth'] = aws_auth
                 return AsyncOpenSearch(**client_kwargs)
             except Exception as e:
-                logger.error(f'[IAM AUTH] Failed to assume IAM role {iam_arn}: {e}')
+                _log_connection_event('iam_auth', datasource_type, opensearch_url, str(e))
                 raise AuthenticationError(f'Failed to assume IAM role {iam_arn}: {e}')
 
         # 4. Basic authentication
@@ -528,7 +569,7 @@ def _create_opensearch_client(
                 client_kwargs['http_auth'] = (opensearch_username.strip(), opensearch_password)
                 return AsyncOpenSearch(**client_kwargs)
             except Exception as e:
-                logger.error(f'[BASIC AUTH] Failed to connect with basic authentication: {e}')
+                _log_connection_event('basic_auth', datasource_type, opensearch_url, str(e))
                 raise AuthenticationError(f'Failed to connect with basic authentication: {e}')
 
         # 5. AWS credentials authentication
@@ -549,7 +590,7 @@ def _create_opensearch_client(
             client_kwargs['http_auth'] = aws_auth
             return AsyncOpenSearch(**client_kwargs)
         except Exception as e:
-            logger.error(f'[AWS CREDS] Failed to authenticate with AWS credentials: {e}')
+            _log_connection_event('aws_creds', datasource_type, opensearch_url, str(e))
             raise AuthenticationError(f'Failed to authenticate with AWS credentials: {e}')
 
     except AuthenticationError:
