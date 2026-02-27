@@ -49,7 +49,11 @@ def log_tool_error(
     # Extract root cause from opensearchpy error info.
     # exception.info is a dict when opensearch-py parses the JSON response,
     # but can be a raw JSON string when the request goes through the fallback path.
+    # The async library stores the response body in exception.error (2nd arg)
+    # rather than exception.info (3rd arg), so fall back to that.
     error_info = getattr(exception, 'info', None)
+    if error_info is None:
+        error_info = getattr(exception, 'error', None)
     if isinstance(error_info, str):
         try:
             error_info = json.loads(error_info)

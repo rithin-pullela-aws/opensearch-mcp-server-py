@@ -79,6 +79,20 @@ class TestLogToolError:
         assert len(records) == 1
         assert records[0].root_cause == 'parsing_exception'
 
+    def test_extracts_root_cause_from_error_attr(self, caplog):
+        """Async opensearchpy stores response body in exception.error, not exception.info."""
+        exc = Exception('not found')
+        exc.status_code = 404
+        exc.info = None
+        exc.error = '{"error":{"root_cause":[{"type":"index_not_found_exception","reason":"no such index"}],"type":"index_not_found_exception"},"status":404}'
+
+        with caplog.at_level(logging.ERROR):
+            log_tool_error('CountTool', exc, 'executing CountTool')
+
+        records = [r for r in caplog.records if hasattr(r, 'root_cause')]
+        assert len(records) == 1
+        assert records[0].root_cause == 'index_not_found_exception'
+
     def test_string_info_not_json_is_ignored(self, caplog):
         """When exception.info is a non-JSON string, root_cause should be absent."""
         exc = Exception('error')
