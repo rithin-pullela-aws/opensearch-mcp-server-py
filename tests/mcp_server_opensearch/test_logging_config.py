@@ -157,7 +157,7 @@ class TestGetRssMb:
         expected_mb = round(12345 * page_size / (1024 * 1024), 2)
 
         with patch('builtins.open', return_value=fake_statm):
-            with patch('os.sysconf', return_value=page_size):
+            with patch('os.sysconf', create=True, return_value=page_size):
                 assert _get_rss_mb() == expected_mb
 
     def test_fallback_when_procfs_and_resource_unavailable(self):
