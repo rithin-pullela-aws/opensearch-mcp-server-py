@@ -88,4 +88,4 @@ def log_tool_error(
         extra=log_extra,
     )
 
-    return [{'type': 'text', 'text': error_text}]
+    return [{'type': 'text', 'text': error_text, 'is_error': True}]

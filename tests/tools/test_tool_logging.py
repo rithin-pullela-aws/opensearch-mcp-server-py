@@ -15,6 +15,7 @@ class TestLogToolError:
         assert len(result) == 1
         assert result[0]['type'] == 'text'
         assert result[0]['text'] == 'Error doing stuff: something broke'
+        assert result[0]['is_error'] is True
 
     def test_returns_error_without_operation(self):
         exc = Exception('fail')

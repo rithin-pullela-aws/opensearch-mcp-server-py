@@ -44,19 +44,35 @@ class TestExecuteTool:
 
     @pytest.mark.asyncio
     @patch('tools.tool_params.validate_args_for_mode')
-    async def test_soft_error_detected(self, mock_validate, caplog):
+    async def test_soft_error_detected_via_is_error_flag(self, mock_validate, caplog):
         mock_validate.return_value = Mock()
         enabled_tools = make_enabled_tools(
-            return_value=[{'type': 'text', 'text': 'Error searching index: connection refused'}]
+            return_value=[{'type': 'text', 'text': 'Error searching index: connection refused', 'is_error': True}]
         )
 
         with caplog.at_level(logging.ERROR):
             result = await execute_tool('TestTool', {}, enabled_tools)
 
-        assert 'Error' in result[0]['text']
+        assert result[0]['is_error'] is True
         error_records = [r for r in caplog.records if hasattr(r, 'event_type') and r.event_type == 'tool_execution']
         assert len(error_records) == 1
         assert error_records[0].status == 'error'
+
+    @pytest.mark.asyncio
+    @patch('tools.tool_params.validate_args_for_mode')
+    async def test_text_starting_with_error_without_flag_is_success(self, mock_validate, caplog):
+        """Text that happens to start with 'Error' but lacks is_error flag should be success."""
+        mock_validate.return_value = Mock()
+        enabled_tools = make_enabled_tools(
+            return_value=[{'type': 'text', 'text': 'Error codes explained: 404 means not found'}]
+        )
+
+        with caplog.at_level(logging.INFO):
+            result = await execute_tool('TestTool', {}, enabled_tools)
+
+        records = [r for r in caplog.records if hasattr(r, 'event_type') and r.event_type == 'tool_execution']
+        assert len(records) == 1
+        assert records[0].status == 'success'
 
     @pytest.mark.asyncio
     async def test_unknown_tool_raises_value_error(self, caplog):

@@ -68,18 +68,11 @@ async def execute_tool(
         parsed = validate_args_for_mode(arguments, tool['args_model'])
         result = await tool['function'](parsed)
 
-        # Detect soft errors: tools catch exceptions internally via
-        # log_tool_error() which always prefixes the text with "Error".
-        # This is an implicit contract — new tools MUST use log_tool_error()
-        # (or prefix error text with "Error") for this detection to work.
+        # Detect soft errors: tools catch exceptions internally and
+        # return errors via log_tool_error(), which sets is_error=True
+        # on the response dict as an explicit status indicator.
         if result and len(result) > 0:
-            text = ''
-            if isinstance(result[0], dict):
-                text = result[0].get('text', '')
-            elif hasattr(result[0], 'text'):
-                text = result[0].text
-
-            if text.startswith('Error'):
+            if isinstance(result[0], dict) and result[0].get('is_error'):
                 status = 'error'
 
         return result
