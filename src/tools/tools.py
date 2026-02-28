@@ -145,7 +145,7 @@ async def get_shards_tool(args: GetShardsArgs) -> list[dict]:
         result = await get_shards(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [{'type': 'text', 'text': f'Error getting shards: {result["error"]}'}]
+            return log_tool_error('GetShardsTool', Exception(result['error']), 'getting shards', index=getattr(args, 'index', None))
         formatted_text = 'index | shard | prirep | state | docs | store | ip | node\n'
 
         # Format each shard row
@@ -206,7 +206,7 @@ async def get_segments_tool(args: GetSegmentsArgs) -> list[dict]:
         result = await get_segments(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [{'type': 'text', 'text': f'Error getting segments: {result["error"]}'}]
+            return log_tool_error('GetSegmentsTool', Exception(result['error']), 'getting segments', index=getattr(args, 'index', None))
 
         # Create a formatted table for better readability
         formatted_text = 'index | shard | prirep | segment | generation | docs.count | docs.deleted | size | memory.bookkeeping | memory.vectors | memory.docvalues | memory.terms | version\n'
@@ -253,7 +253,7 @@ async def cat_nodes_tool(args: CatNodesArgs) -> list[dict]:
         result = await get_nodes(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [{'type': 'text', 'text': f'Error getting nodes: {result["error"]}'}]
+            return log_tool_error('CatNodesTool', Exception(result['error']), 'getting node information')
 
         # If no nodes found
         if not result:
@@ -392,12 +392,7 @@ async def get_allocation_tool(args: GetAllocationArgs) -> list[dict]:
         result = await get_allocation(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [
-                {
-                    'type': 'text',
-                    'text': f'Error getting allocation information: {result["error"]}',
-                }
-            ]
+            return log_tool_error('GetAllocationTool', Exception(result['error']), 'getting allocation information')
 
         # If no allocation information found
         if not result:
@@ -438,9 +433,7 @@ async def get_nodes_tool(args: GetNodesArgs) -> list[dict]:
         result = await get_nodes_info(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [
-                {'type': 'text', 'text': f'Error getting nodes information: {result["error"]}'}
-            ]
+            return log_tool_error('GetNodesTool', Exception(result['error']), 'getting nodes information')
 
         # Format the response for better readability
         formatted_result = json.dumps(result, separators=(',', ':'))
@@ -474,9 +467,7 @@ async def get_long_running_tasks_tool(args: GetLongRunningTasksArgs) -> list[dic
         result = await get_long_running_tasks(args)
 
         if isinstance(result, dict) and 'error' in result:
-            return [
-                {'type': 'text', 'text': f'Error getting long-running tasks: {result["error"]}'}
-            ]
+            return log_tool_error('GetLongRunningTasksTool', Exception(result['error']), 'getting long-running tasks')
 
         # If no tasks found
         if not result:

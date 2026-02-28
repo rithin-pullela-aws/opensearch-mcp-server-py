@@ -88,12 +88,11 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
         valid_methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'PATCH']
         method = args.method.upper()
         if method not in valid_methods:
-            return [
-                {
-                    'type': 'text',
-                    'text': f'Error: Invalid HTTP method "{args.method}". Valid methods are: {", ".join(valid_methods)}',
-                }
-            ]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                ValueError(f'Invalid HTTP method "{args.method}". Valid methods are: {", ".join(valid_methods)}'),
+                'validating request',
+            )
 
         # Check if write operations are allowed using the global setting
         # Import here to avoid circular import (tool_filter -> tools -> generic_api_tool -> tool_filter)
@@ -103,16 +102,19 @@ async def generic_opensearch_api_tool(args: GenericOpenSearchApiArgs) -> list[di
         write_methods = ['POST', 'PUT', 'DELETE', 'PATCH']
 
         if method in write_methods and not allow_write:
-            return [
-                {
-                    'type': 'text',
-                    'text': f'Error: Write operations are disabled. Method "{method}" is not allowed. Enable write operations by setting OPENSEARCH_SETTINGS_ALLOW_WRITE=true or configuring allow_write: true in your config file.',
-                }
-            ]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                PermissionError(f'Write operations are disabled. Method "{method}" is not allowed. Enable write operations by setting OPENSEARCH_SETTINGS_ALLOW_WRITE=true or configuring allow_write: true in your config file.'),
+                'validating request',
+            )
 
         # Validate path
         if not args.path.startswith('/'):
-            return [{'type': 'text', 'text': 'Error: API path must start with "/"'}]
+            return log_tool_error(
+                'GenericOpenSearchApiTool',
+                ValueError('API path must start with "/"'),
+                'validating request',
+            )
 
         # Initialize OpenSearch client with context manager for proper cleanup
         from opensearch.client import get_opensearch_client
