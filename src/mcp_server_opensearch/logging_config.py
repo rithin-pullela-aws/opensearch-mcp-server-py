@@ -135,15 +135,18 @@ async def memory_monitor(interval_seconds: int = 60) -> None:
             _memory_logger.warning(f'Memory monitor iteration failed: {e}')
 
 
-def start_memory_monitor(interval_seconds: int = 60) -> asyncio.Task:
+def start_memory_monitor(interval_seconds: int | None = None) -> asyncio.Task:
     """Start the memory monitor as a background asyncio task.
 
     Args:
-        interval_seconds: Seconds between snapshots (default: 60).
+        interval_seconds: Seconds between snapshots. If not provided,
+            reads from OPENSEARCH_MEMORY_MONITOR_INTERVAL env var (default: 60).
 
     Returns:
         The asyncio.Task running the monitor.
     """
+    if interval_seconds is None:
+        interval_seconds = int(os.environ.get('OPENSEARCH_MEMORY_MONITOR_INTERVAL', '60'))
     task = asyncio.create_task(memory_monitor(interval_seconds))
     task.add_done_callback(_handle_monitor_error)
     return task

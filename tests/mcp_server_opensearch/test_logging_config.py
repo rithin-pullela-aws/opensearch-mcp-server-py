@@ -219,6 +219,25 @@ class TestMemoryMonitor:
                 pass
 
     @pytest.mark.asyncio
+    async def test_start_memory_monitor_reads_env_var(self):
+        """start_memory_monitor reads interval from OPENSEARCH_MEMORY_MONITOR_INTERVAL env var."""
+        sleep_values = []
+
+        async def capture_sleep(seconds):
+            sleep_values.append(seconds)
+            raise asyncio.CancelledError
+
+        with patch(_PATCH_SLEEP, side_effect=capture_sleep):
+            with patch.dict('os.environ', {'OPENSEARCH_MEMORY_MONITOR_INTERVAL': '30'}):
+                task = start_memory_monitor()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        assert sleep_values == [30]
+
+    @pytest.mark.asyncio
     async def test_fallback_when_no_rss_source(self, caplog):
         """memory_monitor logs rss_mb=-1.0 when no RSS source is available."""
         with patch(_PATCH_GET_RSS, return_value=-1.0):
